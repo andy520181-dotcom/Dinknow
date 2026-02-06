@@ -1,0 +1,75 @@
+/* Tailwind基础导入 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 基础样式配置 */
+@layer base {
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background-color: #FFFFFF;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+    /* 防止iOS橡皮筋效果 */
+  }
+
+  /* 全局隐藏滚动条 */
+  * {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari and Opera */
+  }
+}
+
+/* 自定义组件样式 */
+@layer components {
+
+  /* Material Symbols图标配置 */
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .filled-icon {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  /* iOS安全区域适配 */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* iOS样式阴影 */
+  .ios-shadow {
+    box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.04);
+  }
+
+  /* iOS毛玻璃效果 */
+  .ios-blur {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* 个人资料头部渐变 */
+  .profile-header-gradient {
+    background: linear-gradient(180deg, #007AFF 0%, #0051D5 100%);
+  }
+
+  /* 模态框拖拽手柄 */
+  .modal-handle {
+    width: 36px;
+    height: 5px;
+    background-color: #D1D1D6;
+    border-radius: 2.5px;
+    margin: 8px auto 0;
+  }
+}
