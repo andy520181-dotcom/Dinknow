@@ -1,0 +1,47 @@
+{
+  "miniprogramRoot": "dist/build/mp-weixin/",
+  "projectname": "miniprogram",
+  "description": "Dinknow 匹克球活动预约",
+  "appid": "wx89847d0b2ac95357",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "compileHotReLoad": false,
+    "postcss": false,
+    "minified": false,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "cloudfunctionRoot": "cloudfunctions/",
+  "cloudbaseRoot": "cloudfunctions/",
+  "cloudfunctionTemplateRoot": "cloudfunctions-template/",
+  "compileType": "miniprogram",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {},
+  "condition": {},
+  "libVersion": "3.0.0",
+  "cloudenv": {
+    "envId": "cloudbase-0ga8ufoqa6c40d9d"
+  }
+}

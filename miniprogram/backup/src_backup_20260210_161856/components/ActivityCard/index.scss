@@ -1,0 +1,68 @@
+.activity-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.activity-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.activity-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #666;
+
+  .icon {
+    margin-right: 6px;
+    font-size: 12px;
+  }
+}
+
+.activity-address,
+.activity-datetime,
+.activity-count {
+  flex: 1;
+}
+
+.activity-fee {
+  margin-bottom: 8px;
+}
+
+.activity-fee-text {
+  color: #ff6b00;
+  font-weight: 600;
+}
+
+.activity-host {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 12px;
+}
+
+.host-label {
+  margin-right: 4px;
+}
+
+.join-btn {
+  width: 100%;
+  height: 40px;
+  line-height: 40px;
+  background: #07c160;
+  color: #fff;
+  font-size: 15px;
+  border-radius: 8px;
+  border: none;
+
+  &::after {
+    border: none;
+  }
+}

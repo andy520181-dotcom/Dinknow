@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Activity } from '../types';
+import { Geolocation } from '@capacitor/geolocation';
 
 
 interface CreateActivityProps {
@@ -29,84 +30,40 @@ const CreateActivity: React.FC<CreateActivityProps> = ({ onPublish }) => {
         '5.0+': '竞赛级'
     };
 
-    // 逆地理编码：将经纬度转换为地址
-    const getAddressFromCoords = async (lat: number, lng: number): Promise<string> => {
-        try {
-            console.log('[地理位置] 开始逆地理编码，坐标:', lat, lng);
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=zh-CN`
-            );
-            const data = await response.json();
-            console.log('[地理位置] API响应数据:', data);
 
-            if (data && data.address) {
-                // 优先显示：市 + 区
-                const city = data.address.city || data.address.town || data.address.county || '';
-                const district = data.address.district || data.address.suburb || '';
-                console.log('[地理位置] 解析地址 - 市:', city, '区:', district);
 
-                if (city && district) {
-                    return `${city}${district}`;
-                } else if (city) {
-                    return city;
-                } else if (data.display_name) {
-                    // 回退方案：使用简化的display_name
-                    return data.display_name.split(',').slice(0, 2).join('');
-                }
-            }
-            return '未知位置';
-        } catch (error) {
-            console.error('[地理位置] 逆地理编码错误:', error);
-            return '无法获取地址';
-        }
-    };
 
-    // 组件挂载时获取用户位置 - 临时禁用以排查黑屏问题
-    /* 
-    useEffect(() => {
-        const requestLocation = async () => {
+
+    // 组件挂载时获取用户位置
+    React.useEffect(() => {
+        const getCurrentPosition = async () => {
             try {
-                console.log('[地理位置] 开始请求位置权限...');
-                // 请求位置权限
-                const permission = await Geolocation.requestPermissions();
-                console.log('[地理位置] 权限响应:', permission);
+                // Check permissions first
+                const permissionStatus = await Geolocation.checkPermissions();
 
-                if (permission.location === 'granted') {
-                    console.log('[地理位置] 权限已授予，开始获取位置...');
-                    // 获取当前位置
-                    const position = await Geolocation.getCurrentPosition({
-                        enableHighAccuracy: false, // 不需要高精度，节省电量
-                        timeout: 10000, // 10秒超时
-                        maximumAge: 300000 // 5分钟内的缓存位置可用
-                    });
-                    console.log('[地理位置] 获取到位置:', position.coords.latitude, position.coords.longitude);
-
-                    // 将坐标转换为地址
-                    const address = await getAddressFromCoords(
-                        position.coords.latitude,
-                        position.coords.longitude
-                    );
-                    console.log('[地理位置] 转换后的地址:', address);
-
-                    // 只有在用户还没有输入地点时才自动填充
-                    if (!location) {
-                        console.log('[地理位置] 设置地址到输入框:', address);
-                        setLocation(address);
-                    } else {
-                        console.log('[地理位置] 用户已有输入，跳过自动填充');
+                if (permissionStatus.location !== 'granted') {
+                    const requestStatus = await Geolocation.requestPermissions();
+                    if (requestStatus.location !== 'granted') {
+                        console.log('Location permission denied');
+                        return;
                     }
-                } else {
-                    console.log('[地理位置] 权限被拒绝或未授予:', permission.location);
                 }
+
+                const coordinates = await Geolocation.getCurrentPosition();
+                console.log('Current position:', coordinates);
+
+                // TODO: Here you would typically use a reverse geocoding service to get the address
+                // For now, we just have the coordinates: coordinates.coords.latitude, coordinates.coords.longitude
+                // Since our UI expects a string location name, we can't fully auto-fill it without an external API.
+                // We could potentially set a placeholder or just log it for now as requested.
+
             } catch (error) {
-                console.error('[地理位置] 获取位置失败:', error);
-                // 静默失败，不影响用户手动输入
+                console.error('Error getting location', error);
             }
         };
 
-        requestLocation();
-    }, []); // 空依赖数组，只在组件挂载时执行一次
-    */
+        getCurrentPosition();
+    }, []);
 
     const handlePublish = () => {
         if (!title || !location || !date || !time) {
@@ -149,7 +106,7 @@ const CreateActivity: React.FC<CreateActivityProps> = ({ onPublish }) => {
             title: title,
             location: location,
             time: `${weekDay} ${formattedTime}`,
-            currentParticipants: 1,
+            currentParticipants: 0,  // 创建者不自动加入
             maxParticipants: Number(participants) || 4,
             price: price || '0',
             level: `${level} ${levelLabel}`,
@@ -224,31 +181,40 @@ const CreateActivity: React.FC<CreateActivityProps> = ({ onPublish }) => {
             </div>
 
             {/* Main Content - Flex Layout to fit screen */}
-            <div className="flex-1 flex flex-col px-5 pt-8 pb-4 gap-5 overflow-y-auto scrollbar-hide">
+            <div className="flex-1 flex flex-col px-5 pt-2 pb-[45px] gap-2.5 overflow-hidden">
 
                 {/* Section 1: Basic Info */}
                 <div className="shrink-0 space-y-3">
                     {/* 标题 */}
-                    <div className="bg-field-bg border border-transparent focus-within:ring-1 focus-within:ring-ios-blue transition-all rounded-xl px-4 py-3" style={{ minHeight: '80px' }}>
+                    <div className="bg-field-bg border border-transparent transition-all rounded-xl px-4 py-3" style={{ minHeight: '140px' }}>
                         <p className="text-text-main text-[16px] font-medium mb-1">标题</p>
-                        <input
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full bg-transparent border-none p-0 text-text-main placeholder:text-gray-400 placeholder:text-[12px] text-[16px] focus:ring-0 font-medium leading-normal mt-0.5"
-                            placeholder="例如：周末下午进阶拉球赛"
-                        />
+                        <div className="flex items-start gap-2 mt-0.5">
+                            <span className="material-symbols-outlined text-ios-blue text-[20px] mt-0.5">title</span>
+                            <textarea
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="flex-1 bg-transparent border-none p-0 text-text-main placeholder:text-gray-400 placeholder:text-[12px] placeholder:font-light text-[16px] focus:ring-0 font-medium resize-none"
+                                placeholder="例如：高德置地广场下班后匹克球开心局"
+                                rows={3}
+                                wrap="soft"
+                                maxLength={60}
+                            />
+                        </div>
                     </div>
 
                     {/* 地点 - 独立模块 */}
-                    <div className="bg-field-bg border border-transparent focus-within:ring-1 focus-within:ring-ios-blue transition-all rounded-xl px-4 py-3">
-                        <p className="text-text-main text-[16px] font-medium mb-1">地点</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="material-symbols-outlined text-ios-blue text-[20px]">location_on</span>
-                            <input
+                    <div className="bg-field-bg border border-transparent transition-all rounded-xl px-4 py-3">
+                        <p className="text-text-main text-[16px] font-medium mb-1">球馆</p>
+                        <div className="flex items-start gap-2 mt-0.5">
+                            <span className="material-symbols-outlined text-ios-blue text-[20px] mt-0.5">location_on</span>
+                            <textarea
                                 value={location}
                                 onChange={(e) => setLocation(e.target.value)}
-                                className="flex-1 bg-transparent border-none p-0 text-text-main placeholder:text-gray-400 placeholder:text-[12px] text-[16px] focus:ring-0 font-medium"
-                                placeholder="输入活动地点"
+                                className="flex-1 bg-transparent border-none p-0 text-text-main placeholder:text-gray-400 placeholder:text-[12px] placeholder:font-light text-[16px] focus:ring-0 font-medium resize-none"
+                                placeholder="输入球馆名称"
+                                rows={2}
+                                wrap="soft"
+                                maxLength={30}
                             />
                         </div>
                     </div>
@@ -301,8 +267,8 @@ const CreateActivity: React.FC<CreateActivityProps> = ({ onPublish }) => {
 
                 {/* Section 2: Requirements */}
                 <div className="shrink-0 space-y-3">
-                    <div className="bg-field-bg border border-transparent p-3.5 rounded-xl" style={{ minHeight: '100px' }}>
-                        <p className="text-text-main text-[16px] font-medium mb-3">DUPR 水平</p>
+                    <div className="bg-field-bg border border-transparent p-2.5 rounded-xl" style={{ minHeight: '100px' }}>
+                        <p className="text-text-main text-[16px] font-medium mb-2">DUPR 水平</p>
                         {/* 所有级别在一行显示 */}
                         <div className="flex bg-white/70 p-1.5 rounded-lg border border-[#E5E5EA]/30 gap-0.5">
                             {levels.map((lvl) => (
@@ -315,35 +281,37 @@ const CreateActivity: React.FC<CreateActivityProps> = ({ onPublish }) => {
                                             : 'text-text-secondary hover:bg-black/5 active:scale-95'
                                         }`}
                                 >
-                                    <span className="text-[10px] font-medium leading-tight">{levelNames[lvl]}</span>
-                                    <span className="text-[13px] font-bold leading-tight">{lvl}</span>
+                                    <span className="text-[14px] font-medium leading-tight">{levelNames[lvl]}</span>
+                                    <span className="text-[14px] font-bold leading-tight">{lvl}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     <div className="flex gap-3">
-                        <div className="flex flex-col flex-1 bg-field-bg border border-transparent focus-within:ring-1 focus-within:ring-ios-blue transition-all rounded-xl px-4 py-3">
+                        <div className="flex flex-col flex-1 bg-field-bg border border-transparent transition-all rounded-xl px-4 py-3">
                             <p className="text-text-main text-[16px] font-medium mb-1">人数</p>
-                            <input
-
+                            <textarea
                                 value={participants}
                                 onChange={handleParticipantsChange}
-                                className="w-full bg-transparent border-none p-0 text-text-main text-[16px] focus:ring-0 font-medium leading-normal mt-0.5 placeholder:text-gray-400 placeholder:text-[12px]"
-                                type="text"
+                                className="w-full bg-transparent border-none p-0 text-text-main text-[16px] focus:ring-0 font-medium leading-normal mt-0.5 placeholder:text-gray-400 placeholder:text-[12px] placeholder:font-light resize-none"
                                 inputMode="numeric"
                                 placeholder="输入人数"
+                                rows={1}
+                                wrap="soft"
+                                maxLength={3}
                             />
                         </div>
-                        <div className="flex flex-col flex-[2] bg-field-bg border border-transparent focus-within:ring-1 focus-within:ring-ios-blue transition-all rounded-xl px-4 py-3">
+                        <div className="flex flex-col flex-[2] bg-field-bg border border-transparent transition-all rounded-xl px-4 py-3">
                             <p className="text-text-main text-[16px] font-medium mb-1">费用</p>
-                            <input
-
+                            <textarea
                                 value={price}
                                 onChange={(e) => setPrice(e.target.value)}
-                                className="w-full bg-transparent border-none p-0 text-text-main text-[16px] focus:ring-0 font-medium leading-normal mt-0.5 placeholder:text-gray-400 placeholder:text-[12px]"
+                                className="w-full bg-transparent border-none p-0 text-text-main text-[16px] focus:ring-0 font-medium leading-normal mt-0.5 placeholder:text-gray-400 placeholder:text-[12px] placeholder:font-light resize-none"
                                 placeholder="免费或AA制"
-                                type="text"
+                                rows={1}
+                                wrap="soft"
+                                maxLength={15}
                             />
                         </div>
                     </div>
@@ -352,7 +320,7 @@ const CreateActivity: React.FC<CreateActivityProps> = ({ onPublish }) => {
 
 
                 {/* Footer Button - Pushed to bottom */}
-                <div className="mt-auto shrink-0 pt-2">
+                <div className="mt-auto shrink-0 pt-1">
                     <button
                         onClick={handlePublish}
                         className="w-full bg-ios-blue hover:brightness-105 active:scale-[0.98] transition-all text-white font-bold py-3.5 rounded-2xl text-[17px] shadow-lg shadow-ios-blue/30"

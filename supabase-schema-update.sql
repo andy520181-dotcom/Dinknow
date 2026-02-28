@@ -1,0 +1,9 @@
+-- 用户表字段更新
+-- 在 Supabase SQL Editor 中执行此脚本
+
+-- 添加新字段到 users 表
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude NUMERIC;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude NUMERIC;

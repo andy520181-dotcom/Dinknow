@@ -7,9 +7,11 @@ import { Activity } from '../types';
 interface ProfileProps {
     activities?: Activity[];
     onActivityClick?: (activity: Activity) => void;
+    onEditActivity?: (activity: Activity) => void;
+    onDeleteActivity?: (activityId: string) => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ activities = [], onActivityClick }) => {
+const Profile: React.FC<ProfileProps> = ({ activities = [], onActivityClick, onEditActivity, onDeleteActivity }) => {
     const [activeTab, setActiveTab] = useState<'joined' | 'created'>('joined');
 
     const createdActivities = activities.filter(activity => activity.isCreator);
@@ -23,12 +25,12 @@ const Profile: React.FC<ProfileProps> = ({ activities = [], onActivityClick }) =
 
             {/* Main Content Container - Flex Column */}
             <div className="flex-1 flex flex-col min-h-0 relative">
-                
+
                 {/* Blue Background Area with User Info - Shrinkable if needed but keeps structure */}
                 <div className="profile-header-gradient px-4 pt-2 pb-12 text-white shrink-0">
                     <div className="flex gap-4 flex-row items-center w-full">
                         <div className="relative shrink-0">
-                            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-16 w-16 border-2 border-white/40 shadow-lg" style={{backgroundImage: `url("${USER_PROFILE.avatar}")`}}></div>
+                            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-16 w-16 border-2 border-white/40 shadow-lg" style={{ backgroundImage: `url("${USER_PROFILE.avatar}")` }}></div>
                             {USER_PROFILE.isPro && (
                                 <div className="absolute -bottom-1 -right-1 bg-neon-green text-ios-blue text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-md">
                                     PRO
@@ -57,16 +59,16 @@ const Profile: React.FC<ProfileProps> = ({ activities = [], onActivityClick }) =
 
                 {/* White Content Card - Fills remaining space */}
                 <div className="flex-1 bg-white rounded-t-[28px] -mt-6 relative z-10 flex flex-col overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-                    
+
                     {/* Tabs - Fixed at top of white card */}
                     <div className="flex border-b border-slate-100 px-6 shrink-0">
-                        <button 
+                        <button
                             onClick={() => setActiveTab('joined')}
                             className={`flex flex-col items-center justify-center pb-3 pt-4 flex-1 outline-none ${activeTab === 'joined' ? 'border-b-[3px] border-ios-blue text-ios-blue' : 'border-b-[3px] border-transparent text-slate-400'}`}
                         >
                             <p className="text-[14px] font-bold leading-normal">我参加的</p>
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('created')}
                             className={`flex flex-col items-center justify-center pb-3 pt-4 flex-1 outline-none ${activeTab === 'created' ? 'border-b-[3px] border-ios-blue text-ios-blue' : 'border-b-[3px] border-transparent text-slate-400'}`}
                         >
@@ -83,10 +85,12 @@ const Profile: React.FC<ProfileProps> = ({ activities = [], onActivityClick }) =
                         ) : (
                             createdActivities.length > 0 ? (
                                 createdActivities.map(activity => (
-                                    <ActivityCard 
-                                        key={activity.id} 
-                                        activity={activity} 
-                                        onJoinClick={onActivityClick ? () => onActivityClick(activity) : undefined} 
+                                    <ActivityCard
+                                        key={activity.id}
+                                        activity={activity}
+                                        isCreatorView={true}
+                                        onEdit={() => onEditActivity?.(activity)}
+                                        onDelete={() => onDeleteActivity?.(activity.id)}
                                     />
                                 ))
                             ) : (

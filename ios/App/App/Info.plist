@@ -26,8 +26,9 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>需要访问您的相机以拍摄活动照片</string>
+
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>需要获取您的位置以推荐附近活动</string>
+	<string>需要您的位置以推荐附近的活动</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>需要保存照片到您的相册</string>
 	<key>NSPhotoLibraryUsageDescription</key>

@@ -1,0 +1,95 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "广场",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/create-activity/index",
+      "style": {
+        "navigationBarTitleText": "发起活动"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+    {
+      "path": "pages/webview/index",
+      "style": {
+        "navigationBarTitleText": "查看详情"
+      }
+    },
+    {
+      "path": "pages/city-select/index",
+      "style": {
+        "navigationBarTitleText": "选择城市",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/activity-detail/index",
+      "style": {
+        "navigationBarTitleText": "活动详情"
+      }
+    },
+    {
+      "path": "pages/my-activities/index",
+      "style": {
+        "navigationBarTitleText": "我的活动",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/edit-remark/index",
+      "style": {
+        "navigationBarTitleText": "备注"
+      }
+    },
+    {
+      "path": "pages/edit-text-field/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Dinknow",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f5f5",
+    "backgroundTextStyle": "light"
+  },
+  "__usePrivacyCheck__": true,
+  "tabBar": {
+    "color": "#8E8E93",
+    "selectedColor": "#007AFF",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "广场",
+        "iconPath": "static/tabbar/square.png",
+        "selectedIconPath": "static/tabbar/square-active.png"
+      },
+      {
+        "pagePath": "pages/create-activity/index",
+        "text": "发起活动",
+        "iconPath": "static/tabbar/create.png",
+        "selectedIconPath": "static/tabbar/create-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我",
+        "iconPath": "static/tabbar/profile.png",
+        "selectedIconPath": "static/tabbar/profile-active.png"
+      }
+    ]
+  }
+}

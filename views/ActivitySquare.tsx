@@ -6,9 +6,10 @@ interface ActivitySquareProps {
     onCreateClick: () => void;
     activities: Activity[];
     onActivityClick: (activity: Activity) => void;
+    userLocation?: string;
 }
 
-const ActivitySquare: React.FC<ActivitySquareProps> = ({ onCreateClick, activities, onActivityClick }) => {
+const ActivitySquare: React.FC<ActivitySquareProps> = ({ onCreateClick, activities, onActivityClick, userLocation = '最近' }) => {
     return (
         <div className="flex flex-col h-full bg-white relative overflow-hidden">
             {/* Header - Fixed */}
@@ -20,7 +21,7 @@ const ActivitySquare: React.FC<ActivitySquareProps> = ({ onCreateClick, activiti
                 <div className="flex gap-2.5 px-4 pb-2.5 overflow-x-auto scrollbar-hide">
                     <button className="flex h-7 shrink-0 items-center justify-center gap-x-1 rounded-full bg-ios-blue px-3.5 shadow-sm">
                         <span className="material-symbols-outlined text-[14px] text-white mr-1">location_on</span>
-                        <p className="text-white text-[11px] font-bold">最近</p>
+                        <p className="text-white text-[11px] font-bold">{userLocation}</p>
                     </button>
                     <button className="flex h-7 shrink-0 items-center justify-center rounded-full bg-card-grey px-3 border border-transparent">
                         <p className="text-[11px] font-semibold text-slate-600">2.0-2.5 新手</p>

@@ -1,0 +1,62 @@
+/* iOS风格设计系统 - 全局 scss 变量 */
+
+// iOS颜色系统
+$ios-blue: #007AFF;           // iOS主色调
+$ios-blue-dark: #0051D5;       // 按下状态
+$ios-green: #34C759;           // 成功/确认
+$ios-red: #FF3B30;             // 警告/删除
+$ios-orange: #FF9500;          // 费用/强调
+
+// 背景色
+$ios-bg-primary: #FFFFFF;      // 主背景（卡片）
+$ios-bg-secondary: #F2F2F7;     // 次背景（页面）
+$ios-bg-tertiary: #E5E5EA;      // 三级背景（输入框）
+
+// 文字颜色
+$ios-text-primary: #000000;    // 主文字
+$ios-text-secondary: #3C3C43;  // 次要文字
+$ios-text-tertiary: #8E8E93;   // 三级文字（占位符）
+$ios-text-disabled: #C7C7CC;   // 禁用文字
+
+// 边框颜色
+$ios-border: #C6C6C8;           // 边框
+$ios-separator: #E5E5EA;       // 分隔线
+
+// 阴影
+$ios-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+$ios-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+$ios-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+// 圆角
+$ios-radius-sm: 8px;            // 小圆角（按钮、标签）
+$ios-radius-md: 12px;           // 中圆角（输入框）
+$ios-radius-lg: 16px;           // 大圆角（卡片）
+
+// 间距系统
+$ios-spacing-xs: 4px;
+$ios-spacing-sm: 8px;
+$ios-spacing-md: 12px;
+$ios-spacing-lg: 16px;
+$ios-spacing-xl: 20px;
+$ios-spacing-xxl: 24px;
+
+// 字体大小（iOS标准）
+$ios-font-size-xs: 11px;
+$ios-font-size-sm: 13px;
+$ios-font-size-md: 15px;
+$ios-font-size-lg: 17px;
+$ios-font-size-xl: 20px;
+$ios-font-size-xxl: 28px;
+
+// 字体粗细
+$ios-font-weight-regular: 400;
+$ios-font-weight-medium: 500;
+$ios-font-weight-semibold: 600;
+$ios-font-weight-bold: 700;
+
+// 兼容旧变量
+$primary-color: $ios-blue;
+$bg-color: $ios-bg-secondary;
+$text-color: $ios-text-primary;
+$text-secondary: $ios-text-secondary;
+$text-muted: $ios-text-tertiary;
