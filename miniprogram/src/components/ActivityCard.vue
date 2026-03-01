@@ -2,13 +2,19 @@
   <view class="activity-card" :class="{ 'activity-card--has-actions': variant === 'my-created' }">
     <view class="card-top-right">
       <slot name="topRight">
-        <button class="share-btn" open-type="share" @tap="onShareTap">
-          <image class="share-btn-icon" src="/static/icons/icon-share.png" mode="aspectFit" />
+        <button
+          class="share-btn"
+          :class="{ 'share-btn--disabled': isEnded || isFull }"
+          :disabled="isEnded || isFull"
+          open-type="share"
+          @tap="onShareTap"
+        >
+          <text class="share-btn-dots">⋯</text>
         </button>
       </slot>
     </view>
 
-    <!-- 上半部分：发起人头像 + 报名人员头像，最多 18 个，超出用 +N 省略 -->
+    <!-- 上半部分：发起人头像 + 报名人员头像，最多 15 个（5列×3行），超出用 +N 省略 -->
     <view v-if="displayedParticipants.length > 0 || overflowCount > 0" class="card-avatars-section">
       <view
         v-for="(participant, idx) in displayedParticipants"
@@ -210,15 +216,15 @@ const participants = computed(() => {
 })
 
 /** 活动卡最多展示的头像数量，超出用 +N 省略 */
-const MAX_AVATAR_DISPLAY = 18
+const MAX_AVATAR_DISPLAY = 15
 
-/** 用于展示的头像列表（最多 18 个） */
+/** 用于展示的头像列表（最多 15 个，5列×3行） */
 const displayedParticipants = computed(() => {
   const list = participants.value
   return list.slice(0, MAX_AVATAR_DISPLAY)
 })
 
-/** 超出 18 个后的多出人数（发起人 + 已报名总数 - 18） */
+/** 超出 15 个后的多出人数（发起人 + 已报名总数 - 15） */
 const overflowCount = computed(() => {
   const total = props.activity
     ? 1 + (props.activity.currentCount ?? 0)
@@ -276,8 +282,8 @@ async function handleJoinClick() {
 
 .card-top-right {
   position: absolute;
-  top: $ios-spacing-lg;
-  right: $ios-spacing-lg;
+  top: $ios-spacing-md;
+  right: $ios-spacing-md;
   z-index: 1;
 }
 
@@ -285,24 +291,31 @@ async function handleJoinClick() {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  width: 32px;
-  height: 28px;
-  min-height: 28px;
-  background: rgba($ios-blue, 0.1);
-  border-radius: 12px;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  background: transparent;
+  border-radius: 50%;
   border: none;
   &::after { border: none; }
-  &:active { opacity: 0.85; }
+  &:active { opacity: 0.6; }
+
+  // NOTE: 已结束活动的分享按钮置灰不可用
+  &--disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
 }
 
-.share-btn-icon {
-  width: 18px;
-  height: 18px;
+.share-btn-dots {
+  font-size: 24px;
+  color: #333333;
+  line-height: 1;
 }
 
 :deep(.activity-title) {
-  padding-right: 48px;
+  padding-right: 32px;
 }
 
 .activity-card--has-actions :deep(.activity-title) {
@@ -310,12 +323,12 @@ async function handleJoinClick() {
 }
 
 /* 上半部分：发起人 + 报名人员头像 */
+// NOTE: 固定 5 列网格，用 rpx 保证不同屏幕等比缩放
 .card-avatars-section {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 16px;
-  padding-right: 40px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  justify-items: center;
+  gap: 24rpx;
 }
 
 /* 头像与文案之间的分割线 */
@@ -339,8 +352,7 @@ async function handleJoinClick() {
   border-radius: 50%;
   overflow: visible;
   flex-shrink: 0;
-  /* 避免白色头像与白底融合：描边 + 轻阴影，保证圆形轮廓清晰 */
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  /* 避免白色头像与白底融合：轻阴影保证圆形轮廓清晰 */
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
@@ -359,7 +371,6 @@ async function handleJoinClick() {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .card-avatar-icon {
@@ -378,7 +389,7 @@ async function handleJoinClick() {
   white-space: nowrap;
 }
 
-/* 超出 18 个头像时的省略展示（+N） */
+/* 超出 15 个头像时的省略展示（+N） */
 .card-avatar-item--overflow {
   cursor: default;
 }
@@ -387,7 +398,6 @@ async function handleJoinClick() {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 .card-avatar-overflow-text {
   font-size: 13px;

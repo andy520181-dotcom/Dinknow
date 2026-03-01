@@ -396,9 +396,9 @@ function handleLocationTagTap() {
   requestLocationAndLoad()
 }
 
-// 筛选切换
+// NOTE: 筛选切换：点击选中，再次点击同一标签取消选中，显示全部活动
 function handleFilterChange(value: string) {
-  selectedFilter.value = value
+  selectedFilter.value = selectedFilter.value === value ? '' : value
   loadActivities()
 }
 
@@ -542,11 +542,11 @@ onUnmounted(() => {
   uni.$off('avatar-updated', handleAvatarUpdated)
 })
 
-// 分享功能：转发到微信（从卡片点击分享时分享该活动，否则分享广场页）
+// NOTE: 转发到微信好友（分享特定活动时用动态标题，否则用品牌标题）
 onShareAppMessage(() => {
   const target = shareTargetActivity.value
   if (target?._id) {
-    const title = target.title ? `${target.title} - 匹克球活动` : '匹克球活动邀你参加'
+    const title = target.title ? `${target.title} - 找匹克球搭子，上Dinknow` : '找匹克球搭子，上Dinknow'
     const path = `/pages/activity-detail/index?id=${encodeURIComponent(target._id)}`
     shareTargetActivity.value = null // 用后清空
     return {
@@ -555,54 +555,19 @@ onShareAppMessage(() => {
       imageUrl: '/images/share-image.png'
     }
   }
-  // 默认：分享广场页
-  let shareTitle = '发现附近的匹克球活动'
-  if (currentCity.value && currentCity.value !== '定位中') {
-    shareTitle = `${currentCity.value}的匹克球活动`
-  }
-  if (selectedFilter.value) {
-    const filterLabel = filters.find(f => f.value === selectedFilter.value)?.label || selectedFilter.value
-    shareTitle = `${shareTitle} - ${filterLabel}`
-  }
-  if (activities.value.length > 0) {
-    shareTitle = `${shareTitle}（${activities.value.length}个活动）`
-  }
-  let sharePath = '/pages/index/index'
-  if (selectedFilter.value) {
-    sharePath += `?filter=${encodeURIComponent(selectedFilter.value)}`
-  }
+  // NOTE: 默认品牌转发标题
   return {
-    title: shareTitle,
-    path: sharePath,
+    title: '找匹克球搭子，上Dinknow',
+    path: '/pages/index/index',
     imageUrl: '/images/share-image.png'
   }
 })
 
-// 分享到朋友圈
+// NOTE: 分享到朋友圌（需在小程序后台开通「分享朋友圌」权限）
 onShareTimeline(() => {
-  let shareTitle = '发现附近的匹克球活动'
-  
-  if (currentCity.value && currentCity.value !== '定位中') {
-    shareTitle = `${currentCity.value}的匹克球活动`
-  }
-  
-  if (selectedFilter.value) {
-    const filterLabel = filters.find(f => f.value === selectedFilter.value)?.label || selectedFilter.value
-    shareTitle = `${shareTitle} - ${filterLabel}`
-  }
-  
-  if (activities.value.length > 0) {
-    shareTitle = `${shareTitle}（${activities.value.length}个活动）`
-  }
-  
-  let query = ''
-  if (selectedFilter.value) {
-    query = `filter=${encodeURIComponent(selectedFilter.value)}`
-  }
-  
   return {
-    title: shareTitle,
-    query: query,
+    title: '找匹克球搭子，上Dinknow',
+    query: '',
     imageUrl: '/images/share-image.png'
   }
 })

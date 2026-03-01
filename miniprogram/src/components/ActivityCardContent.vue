@@ -143,14 +143,14 @@ defineExpose({
 </script>
 
 <style lang="scss" scoped>
-// NOTE: 所有行放入同一 flex-column，用 gap 统一控制所有行间距
+// NOTE: 所有行放入同一 flex-column，用 gap 统一控制标题/第一行/第二行的行间距
 .card-rows {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-// NOTE: 标题不再需要单独 margin，由父级 gap 统一控制
+// NOTE: 标题行
 .title-row {
   display: flex;
   align-items: center;
@@ -160,7 +160,7 @@ defineExpose({
 .activity-title {
   font-size: 16px;
   font-weight: $ios-font-weight-semibold;
-  color: $ios-text-primary;
+  color: #333333;
   flex: 1;
   min-width: 0;
   line-height: 1.4;
@@ -240,8 +240,9 @@ defineExpose({
   display: none; // NOTE: footer 已更改为内联布局，此样式保留备用
 }
 
-// NOTE: 第二行：左侧 info + 右侧按钮共一行，行间距由父级 gap 统一控制
+// NOTE: 第二行上移 2px，补偿标题到第一行间距偏小的视觉差
 .info-row--footer {
+  margin-top: -2px;
   display: flex;
   align-items: center;
   justify-content: space-between;

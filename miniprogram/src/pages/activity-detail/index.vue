@@ -65,14 +65,15 @@
         </view>
       </view>
 
-      <!-- 第二部分：发起人 + 报名用户头像（最多18个，超出用+N省略，与广场页一致） -->
+      <!-- 第二部分：发起人 + 报名用户头像（详情页不限制数量，有多少显示多少） -->
       <view class="participants-section">
-        <text class="section-title">参与人员</text>
+        <text class="section-title">匹克球搭子</text>
         <view class="participants-list">
           <view
             v-for="(item, idx) in displayedParticipants"
             :key="item.userId || idx"
             class="participant-item"
+            :class="{ 'participant-item--leaving': item.leaving }"
             @tap="handleViewProfile(item.userId)"
           >
             <view class="participant-avatar-container">
@@ -89,12 +90,7 @@
             </view>
             <text class="participant-name-large">{{ item.nickName || '微信用户' }}</text>
           </view>
-          <view v-if="overflowCount > 0" class="participant-item participant-item--overflow">
-            <view class="participant-avatar-container participant-avatar-container--overflow">
-              <text class="participant-overflow-text">+{{ overflowCount }}</text>
-            </view>
-            <text class="participant-name-large participant-name-large--overflow">更多</text>
-          </view>
+
         </view>
       </view>
 
@@ -181,7 +177,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { onLoad, onShow, onHide, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import type { Activity, User } from '../../types'
 import { getActivityDetail, joinActivity } from '../../services/activity'
 import { getProfile, checkLogin } from '../../services/user'
@@ -210,12 +206,11 @@ const max = computed(() => activity.value?.maxParticipants ?? 0)
 const remaining = computed(() => Math.max(0, max.value - current.value))
 const participants = computed(() => activity.value?.participants || [])
 
-/** 与广场页一致：最多展示 18 个头像（发起人 + 报名人） */
-const MAX_AVATAR_DISPLAY = 18
+/** 详情页显示全部参与人员，不做数量限制 */
 const displayedParticipants = computed(() => {
   const act = activity.value
   if (!act) return []
-  const list: Array<{ userId: string; avatarUrl?: string; nickName?: string; isHost?: boolean }> = []
+  const list: Array<{ userId: string; avatarUrl?: string; nickName?: string; isHost?: boolean; leaving?: boolean }> = []
   if (act.hostId) {
     list.push({
       userId: act.hostId,
@@ -231,13 +226,7 @@ const displayedParticipants = computed(() => {
     nickName: p.nickName,
     isHost: false
   })))
-  // NOTE: 详情页显示全部参与人员，不做数量限制（广场页限 18 个）
   return list
-})
-/** 超出 18 个后的多出人数 */
-const overflowCount = computed(() => {
-  const total = activity.value ? 1 + (activity.value.currentCount ?? 0) : 0
-  return Math.max(0, total - MAX_AVATAR_DISPLAY)
 })
 
 const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
@@ -406,7 +395,81 @@ onUnmounted(() => {
   uni.$off('activity-updated', handleActivityUpdated)
   uni.$off('activity-deleted', handleActivityDeleted)
   uni.$off('avatar-updated', handleAvatarUpdated)
+  // 停止定时轮询
+  stopPolling()
 })
+
+// NOTE: 定时轮询，每 1 秒静默检查参与者变化，仅在有新报名/退出时才更新 UI
+let pollingTimer: ReturnType<typeof setInterval> | null = null
+const POLLING_INTERVAL = 1000 // 1 秒
+
+/** 静默同步参与者列表：只比较人数和 userId，有变化才更新，避免整页闪烁 */
+let isSyncing = false
+async function silentSyncParticipants() {
+  if (!activityId.value || !activity.value || isSyncing) return
+  isSyncing = true
+  try {
+    const detail = await getActivityDetail(activityId.value)
+    if (!detail) return
+    const oldIds = (activity.value.participants || []).map((p: { userId?: string }) => p.userId).sort().join(',')
+    const newIds = (detail.participants || []).map((p: { userId?: string }) => p.userId).sort().join(',')
+    // 参与者列表无变化，不触发 UI 更新
+    if (oldIds === newIds && (activity.value.currentCount ?? 0) === (detail.currentCount ?? 0)) return
+
+    const oldParticipants = activity.value.participants || []
+    const newParticipantIds = new Set((detail.participants || []).map((p: { userId?: string }) => p.userId))
+
+    // 找出退出的用户（在旧列表中但不在新列表中）
+    const leavingIds = oldParticipants
+      .filter((p: { userId?: string }) => !newParticipantIds.has(p.userId))
+      .map((p: { userId?: string }) => p.userId)
+
+    if (leavingIds.length > 0) {
+      // 先标记退出用户触发淡出动画
+      activity.value = {
+        ...activity.value,
+        participants: oldParticipants.map((p: { userId?: string }) => (
+          leavingIds.includes(p.userId) ? { ...p, leaving: true } : p
+        )) as typeof activity.value.participants
+      }
+      // 等待淡出动画完成后再更新为新列表
+      await new Promise(resolve => setTimeout(resolve, 800))
+    }
+
+    // 更新为最新参与者列表
+    const mergedParticipants = (detail.participants || []).map((p: Record<string, unknown>) => {
+      const op = oldParticipants.find((x: { userId?: string }) => x.userId === p.userId)
+      const oldUrl = op?.avatarUrl
+      const newUrl = p.avatarUrl as string
+      const keepOld = oldUrl && String(oldUrl).startsWith('http')
+      return { ...p, avatarUrl: keepOld ? oldUrl : (newUrl || oldUrl || '') }
+    })
+    activity.value = {
+      ...activity.value,
+      participants: mergedParticipants as typeof activity.value.participants,
+      currentCount: detail.currentCount
+    }
+  } catch {
+    // 静默失败，不打断用户
+  } finally {
+    isSyncing = false
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  if (!activityId.value) return
+  pollingTimer = setInterval(() => {
+    silentSyncParticipants()
+  }, POLLING_INTERVAL)
+}
+
+function stopPolling() {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+}
 
 onShow(async () => {
   // 页面显示时刷新活动详情（可能用户从其他页面返回，需要更新报名状态）
@@ -421,6 +484,14 @@ onShow(async () => {
       await loadActivityDetail()
     }
   }
+
+  // 启动定时轮询，每 10 秒自动刷新参与者列表
+  startPolling()
+})
+
+onHide(() => {
+  // 页面隐藏时停止轮询，避免后台无效请求
+  stopPolling()
 })
 
 // 加载当前用户信息
@@ -470,17 +541,23 @@ async function loadActivityDetail(forceRefresh = false) {
       // 旧逻辑 keepHostAvatar 会保留旧 temp URL（可能已过期），导致头像失效。
       const merged = {
         ...detail,
-        hostAvatar: detail.hostAvatar || prev?.hostAvatar || ''
+        // NOTE: 优先保留缓存的 hostAvatar URL，避免 URL 字符串变化触发图片重载闪烁
+        // 仅当缓存无值时才采用云函数返回的新 URL
+        hostAvatar: prev?.hostAvatar || detail.hostAvatar || ''
       } as Record<string, unknown>
       merged.hostRegion = detailAny.hostRegion
       merged.hostSignature = detailAny.hostSignature
       const oldParticipants = prev?.participants || []
       merged.participants = (detail.participants || []).map((p: Record<string, unknown>) => {
         const op = oldParticipants.find((x: { userId?: string }) => x.userId === p.userId)
-        // NOTE: 优先用云函数返回的最新头像 URL；缺失时才回退到旧缓存
+        // NOTE: 与 hostAvatar 同理，优先保留缓存中已有的 http(s) URL，
+        // 避免 URL 字符串变化（如 cloud:// → https://）触发图片重载闪烁
+        const oldUrl = op?.avatarUrl
+        const newUrl = p.avatarUrl as string
+        const keepOld = oldUrl && String(oldUrl).startsWith('http')
         return {
           ...p,
-          avatarUrl: (p.avatarUrl as string) || op?.avatarUrl || '',
+          avatarUrl: keepOld ? oldUrl : (newUrl || oldUrl || ''),
           region: p.region,
           signature: p.signature
         }
@@ -786,7 +863,7 @@ async function handleJoin() {
 onShareAppMessage(() => {
   if (!activity.value || !activityId.value) {
     return {
-      title: '匹克球活动',
+      title: '找匹克球搭子，上Dinknow',
       path: '/pages/index/index'
     }
   }
@@ -805,7 +882,7 @@ onShareAppMessage(() => {
 onShareTimeline(() => {
   if (!activity.value || !activityId.value) {
     return {
-      title: '匹克球活动',
+      title: '找匹克球搭子，上Dinknow',
       query: ''
     }
   }
@@ -942,6 +1019,10 @@ onShareTimeline(() => {
   border-radius: 50%;
   flex-shrink: 0;
   background: $ios-bg-tertiary;
+  // NOTE: 轻阴影区分白色头像，与广场页保持一致
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  // NOTE: 平滑过渡，用户切换 URL 时不闪烁
+  transition: opacity 0.2s ease;
 
   &--placeholder {
     display: flex;
@@ -961,45 +1042,75 @@ onShareTimeline(() => {
   border-radius: $ios-radius-lg;
   padding: $ios-spacing-lg;
   margin-bottom: $ios-spacing-md;
+  // NOTE: 防止头像超出卡片边界，隐藏滚动条
+  overflow: hidden;
 }
 
 .section-title {
   font-size: 16px;
-  font-weight: $ios-font-weight-semibold;
   color: $ios-text-primary;
   margin-bottom: 16px;
   display: block;
 }
 
+// NOTE: 固定 5 列网格，与广场页一致，用 rpx 保证不同屏幕等比缩放
 .participants-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  justify-items: center;
+  gap: 24rpx;
 }
 
 .participant-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 80px;
+  // NOTE: 宽度自适应 grid 列宽，不再固定 80px，防止超出卡片
+  width: 100%;
+  max-width: 80px;
   cursor: pointer;
-  
+  // NOTE: 新报名时头像平滑淡入
+  animation: avatarFadeIn 0.8s ease;
+
   &:active {
     opacity: 0.7;
   }
+
+  // NOTE: 退出时头像平滑淡出
+  &--leaving {
+    animation: avatarFadeOut 0.8s ease forwards;
+    pointer-events: none;
+  }
+}
+
+@keyframes avatarFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes avatarFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 .participant-avatar-container {
   position: relative;
   margin-bottom: 8px;
+  // NOTE: 圆形裁切，使发起人半圆徽章不超出头像范围
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 .participant-avatar-large {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  border: 2px solid $ios-separator;
   background: $ios-bg-tertiary;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  // NOTE: 平滑过渡，与发起人头像一致，避免 URL 变化时闪烁
+  transition: opacity 0.2s ease;
 }
 
 .participant-avatar-placeholder-large {
@@ -1007,7 +1118,7 @@ onShareTimeline(() => {
   height: 60px;
   border-radius: 50%;
   background: $ios-bg-tertiary;
-  border: 2px solid $ios-separator;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1018,17 +1129,19 @@ onShareTimeline(() => {
   opacity: 0.4;
 }
 
+// NOTE: 发起人半圆徽章，与个人页 profile-edit-badge 完全一致
 .host-badge {
   position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 2px 8px;
-  background: $ios-blue;
-  color: #fff;
-  border-radius: 8px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  background: rgba(100, 100, 108, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
-  font-weight: $ios-font-weight-semibold;
+  color: #ffffff;
   white-space: nowrap;
 }
 
@@ -1040,10 +1153,9 @@ onShareTimeline(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: $ios-font-weight-medium;
 }
 
-/* 参与人员超出 18 个时的省略展示（+N），与广场页活动卡一致 */
+/* 参与人员超出 16 个时的省略展示（+N），与广场页活动卡一致 */
 .participant-item--overflow {
   cursor: default;
   pointer-events: none;

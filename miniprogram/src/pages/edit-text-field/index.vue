@@ -59,7 +59,7 @@ const placeholder = computed(() => {
 })
 
 const maxLen = computed(() => {
-  return fieldType.value === 'nickname' ? 20 : 80
+  return fieldType.value === 'nickname' ? 20 : 20
 })
 
 onMounted(() => {

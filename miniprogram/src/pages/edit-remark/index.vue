@@ -5,7 +5,11 @@
       <view class="remark-action-btn" @tap="onCancel">
         <text class="remark-action-text remark-action-text--cancel">取消</text>
       </view>
-      <view class="remark-action-btn remark-action-btn--done" @tap="onDone">
+      <view
+        class="remark-action-btn remark-action-btn--done"
+        :class="{ 'remark-action-btn--done-disabled': !hasContent }"
+        @tap="hasContent ? onDone() : undefined"
+      >
         <text class="remark-action-text remark-action-text--done">完成</text>
       </view>
     </view>
@@ -28,9 +32,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const content = ref('')
+
+// NOTE: 有内容时完成按钮才可用（与昵称/球风编辑页一致）
+const hasContent = computed(() => content.value.trim().length > 0)
 
 function onInput(e: any) {
   content.value = e?.detail?.value ?? ''
@@ -82,6 +89,10 @@ onMounted(() => {
     background: $ios-blue;
     border-radius: 8px;
     padding: 6px 16px;
+    // NOTE: 无内容时按钮变灰，与昵称/球风编辑页一致
+    &-disabled {
+      background: $ios-text-tertiary;
+    }
   }
 }
 

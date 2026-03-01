@@ -1,172 +1,174 @@
 <template>
   <view class="create-page">
-    <!-- 表单主体（固定布局，一屏显示，无需滚动） -->
-    <view class="ios-form">
-        <!-- 左上角返回按钮（独立于卡片之外） -->
-        <view class="create-back-row" @tap="handleBack">
-          <text class="create-back-icon">‹</text>
-          <text class="create-back-text">返回</text>
-        </view>
-
-        <!-- 主信息卡片：发起人 + 标题 + 时间 + 地点 + DUPR水平 + 人数 + 费用 + 联系方式 -->
-        <view class="ios-section">
-          <!-- 发起人：头像紧贴标签右侧（靠左），昵称占满剩余宽度右对齐 -->
-          <view class="ios-cell ios-cell--initiator">
-          <image class="ios-cell__row-icon" src="/static/icons/faqiren.png" mode="aspectFit" />
-            <text class="ios-cell__label">发起人</text>
-            <image
-              v-if="currentUser?.avatarUrl"
-              class="ios-initiator__avatar"
-              :src="currentUser.avatarUrl"
-              mode="aspectFill"
-            />
-            <view v-else class="ios-initiator__avatar ios-initiator__avatar--placeholder" />
-            <text class="ios-initiator__name">{{ currentUser?.nickName || '...' }}</text>
+    <!-- NOTE: scroll-view 包裹全部内容，小屏幕自动滚动，大屏幕不滚动 -->
+    <scroll-view class="create-scroll" scroll-y>
+      <!-- 表单主体 -->
+      <view class="ios-form">
+          <!-- 左上角返回按键（独立于卡片之外） -->
+          <view class="create-back-row" @tap="handleBack">
+            <text class="create-back-icon">‹</text>
+            <text class="create-back-text">返回</text>
           </view>
 
-          <!-- 标题 -->
-          <view class="ios-cell ios-cell--input">
-            <image class="ios-cell__row-icon" src="/static/icons/icon_title.png" mode="aspectFit" />
-            <text class="ios-cell__label">标题</text>
-            <input
-              class="ios-cell__input ios-cell__input--right"
-              placeholder="高德广场下班后出汗局"
-              placeholder-class="ios-input-placeholder"
-              :value="title"
-              @input="onTitleInput"
-            />
-          </view>
+          <!-- 主信息卡片：发起人 + 标题 + 时间 + 地点 + DUPR水平 + 人数 + 费用 + 联系方式 -->
+          <view class="ios-section">
+            <!-- 发起人：头像紧贴标签右侧（靠左），昵称占满剩余宽度右对齐 -->
+            <view class="ios-cell ios-cell--initiator">
+            <image class="ios-cell__row-icon" src="/static/icons/faqiren.png" mode="aspectFit" />
+              <text class="ios-cell__label">发起人</text>
+              <image
+                v-if="currentUser?.avatarUrl"
+                class="ios-initiator__avatar"
+                :src="currentUser.avatarUrl"
+                mode="aspectFill"
+              />
+              <view v-else class="ios-initiator__avatar ios-initiator__avatar--placeholder" />
+              <text class="ios-initiator__name">{{ currentUser?.nickName || '...' }}</text>
+            </view>
 
-          <!-- 时间：三列选择器（日期+星期 | 开始时间 | 结束时间） -->
-          <view class="ios-cell ios-cell--tap">
-            <image class="ios-cell__row-icon" src="/static/icons/shijian.png" mode="aspectFit" />
-            <text class="ios-cell__label">时间</text>
-            <picker
-              mode="multiSelector"
-              :range="timePickerRange"
-              :value="timePickerValue"
-              @change="onTimePickerChange"
-              style="flex:1"
-            >
-              <view class="ios-cell__value ios-cell__value--right">
-                <text v-if="startDate" class="ios-time-val">{{ timeDisplayText }}</text>
+            <!-- 标题 -->
+            <view class="ios-cell ios-cell--input">
+              <image class="ios-cell__row-icon" src="/static/icons/icon_title.png" mode="aspectFit" />
+              <text class="ios-cell__label">标题</text>
+              <input
+                class="ios-cell__input ios-cell__input--right"
+                placeholder="请输入"
+                placeholder-class="ios-input-placeholder"
+                :value="title"
+                @input="onTitleInput"
+              />
+            </view>
+
+            <!-- 时间：三列选择器（日期+星期 | 开始时间 | 结束时间） -->
+            <view class="ios-cell ios-cell--tap">
+              <image class="ios-cell__row-icon" src="/static/icons/shijian.png" mode="aspectFit" />
+              <text class="ios-cell__label">时间</text>
+              <picker
+                mode="multiSelector"
+                :range="timePickerRange"
+                :value="timePickerValue"
+                @change="onTimePickerChange"
+                style="flex:1"
+              >
+                <view class="ios-cell__value ios-cell__value--right">
+                  <text v-if="startDate" class="ios-time-val">{{ timeDisplayText }}</text>
+                  <text v-else class="ios-cell__placeholder">请选择</text>
+                </view>
+              </picker>
+              <text class="ios-cell__chevron">›</text>
+            </view>
+
+            <!-- 地点 -->
+            <view class="ios-cell ios-cell--tap" @tap="handleChooseLocation">
+              <image class="ios-cell__row-icon" src="/static/icons/dingwei.png" mode="aspectFit" />
+              <text class="ios-cell__label">地点</text>
+              <view class="ios-cell__value ios-cell__value--right ios-cell__value--ellipsis">
+                <text v-if="venueName || address">{{ venueName || address }}</text>
                 <text v-else class="ios-cell__placeholder">请选择</text>
               </view>
-            </picker>
-            <text class="ios-cell__chevron">›</text>
-          </view>
-
-          <!-- 地点 -->
-          <view class="ios-cell ios-cell--tap" @tap="handleChooseLocation">
-            <image class="ios-cell__row-icon" src="/static/icons/dingwei.png" mode="aspectFit" />
-            <text class="ios-cell__label">地点</text>
-            <view class="ios-cell__value ios-cell__value--right ios-cell__value--ellipsis">
-              <text v-if="venueName || address">{{ venueName || address }}</text>
-              <text v-else class="ios-cell__placeholder">请选择</text>
+              <text class="ios-cell__chevron">›</text>
             </view>
-            <text class="ios-cell__chevron">›</text>
-          </view>
 
-          <!-- DUPR 水平 -->
-          <view class="ios-cell ios-cell--tap">
-            <image class="ios-cell__row-icon" src="/static/icons/dupr.png" mode="aspectFit" />
-            <text class="ios-cell__label">DUPR 水平</text>
-            <view class="ios-cell__value ios-cell__value--right">
-              <picker
-                mode="selector"
-                :range="duprLevels"
-                :value="duprIndex"
-                @change="onDuprChange"
-              >
-                <text :class="selectedDupr ? 'ios-picker-text' : 'ios-cell__placeholder'">
-                  {{ selectedDupr || '请选择' }}
-                </text>
-              </picker>
+            <!-- DUPR 水平 -->
+            <view class="ios-cell ios-cell--tap">
+              <image class="ios-cell__row-icon" src="/static/icons/dupr.png" mode="aspectFit" />
+              <text class="ios-cell__label">DUPR 水平</text>
+              <view class="ios-cell__value ios-cell__value--right">
+                <picker
+                  mode="selector"
+                  :range="duprLevels"
+                  :value="duprIndex"
+                  @change="onDuprChange"
+                >
+                  <text :class="selectedDupr ? 'ios-picker-text' : 'ios-cell__placeholder'">
+                    {{ selectedDupr || '请选择' }}
+                  </text>
+                </picker>
+              </view>
+              <text class="ios-cell__chevron">›</text>
             </view>
-            <text class="ios-cell__chevron">›</text>
-          </view>
 
-          <!-- 人数 -->
-          <view class="ios-cell ios-cell--input">
-            <image class="ios-cell__row-icon" src="/static/icons/renshu.png" mode="aspectFit" />
-            <text class="ios-cell__label">人数</text>
-            <input
-              class="ios-cell__input ios-cell__input--right"
-              type="number"
-              placeholder="输入人数"
-              placeholder-class="ios-input-placeholder"
-              :value="maxParticipantsInput"
-              @input="onMaxParticipantsInput"
-            />
-          </view>
-
-          <!-- 费用：数字输入 + 固定「元/人」后缀 -->
-          <view class="ios-cell ios-cell--fee">
-            <image class="ios-cell__row-icon" src="/static/icons/feiyong.png" mode="aspectFit" />
-            <text class="ios-cell__label">费用</text>
-            <view class="ios-fee-row">
+            <!-- 人数 -->
+            <view class="ios-cell ios-cell--input">
+              <image class="ios-cell__row-icon" src="/static/icons/renshu.png" mode="aspectFit" />
+              <text class="ios-cell__label">人数</text>
               <input
-                class="ios-fee-input"
-                type="digit"
-                placeholder="0"
+                class="ios-cell__input ios-cell__input--right"
+                type="number"
+                placeholder="输入人数"
                 placeholder-class="ios-input-placeholder"
-                :value="fee"
-                @input="onFeeInput"
+                :value="maxParticipantsInput"
+                @input="onMaxParticipantsInput"
               />
-              <text class="ios-fee-unit">元/人</text>
+            </view>
+
+            <!-- 费用：数字输入 + 固定「元/人」后缀 -->
+            <view class="ios-cell ios-cell--fee">
+              <image class="ios-cell__row-icon" src="/static/icons/feiyong.png" mode="aspectFit" />
+              <text class="ios-cell__label">费用</text>
+              <view class="ios-fee-row">
+                <input
+                  class="ios-fee-input"
+                  type="digit"
+                  placeholder="0"
+                  placeholder-class="ios-input-placeholder"
+                  :value="fee"
+                  @input="onFeeInput"
+                />
+                <text class="ios-fee-unit">元/人</text>
+              </view>
+            </view>
+
+            <!-- 联系方式 -->
+            <view class="ios-cell ios-cell--input">
+              <image class="ios-cell__row-icon" src="/static/icons/lianxi.png" mode="aspectFit" />
+              <text class="ios-cell__label">联系方式</text>
+              <input
+                class="ios-cell__input ios-cell__input--right"
+                placeholder="手机号或微信号"
+                placeholder-class="ios-input-placeholder"
+                :value="contactInfo"
+                @input="onContactInput"
+              />
             </view>
           </view>
 
-          <!-- 联系方式 -->
-          <view class="ios-cell ios-cell--input">
-            <image class="ios-cell__row-icon" src="/static/icons/lianxi.png" mode="aspectFit" />
-            <text class="ios-cell__label">联系方式</text>
-            <input
-              class="ios-cell__input ios-cell__input--right"
-              placeholder="手机号或微信号"
-              placeholder-class="ios-input-placeholder"
-              :value="contactInfo"
-              @input="onContactInput"
-            />
-          </view>
-        </view>
-
-        <!-- 备注卡片：点击跳转到独立编辑页 -->
-        <view class="ios-section">
-          <view class="ios-cell ios-cell--tap" @tap="goToRemarkEdit">
-            <image class="ios-cell__row-icon" src="/static/icons/beizhu.png" mode="aspectFit" />
-            <text class="ios-cell__label">备注</text>
-            <view class="ios-cell__value ios-cell__value--right ios-cell__value--ellipsis">
-              <text v-if="description">{{ description }}</text>
-              <text v-else class="ios-cell__placeholder">选填，如注意事项、装备要求等</text>
+          <!-- 备注卡片：点击跳转到独立编辑页 -->
+          <view class="ios-section">
+            <view class="ios-cell ios-cell--tap" @tap="goToRemarkEdit">
+              <image class="ios-cell__row-icon" src="/static/icons/beizhu.png" mode="aspectFit" />
+              <text class="ios-cell__label">备注</text>
+              <view class="ios-cell__value ios-cell__value--right ios-cell__value--ellipsis">
+                <text v-if="description">{{ description }}</text>
+                <text v-else class="ios-cell__placeholder">选填，如注意事项、装备要求等</text>
+              </view>
+              <text class="ios-cell__chevron">›</text>
             </view>
-            <text class="ios-cell__chevron">›</text>
+          </view>
+      </view>
+
+      <!-- NOTE: 免责声明勾选行 -->
+      <view class="disclaimer-row">
+        <view class="disclaimer-checkbox" @tap="disclaimerAccepted = !disclaimerAccepted">
+          <view class="disclaimer-checkbox-inner" :class="{ 'disclaimer-checkbox-inner--checked': disclaimerAccepted }">
+            <text v-if="disclaimerAccepted" class="disclaimer-check-icon">✓</text>
           </view>
         </view>
+        <text class="disclaimer-label">我已仔细阅读并同意</text>
+        <text class="disclaimer-link" @tap.stop="goToDisclaimer">《免责声明》</text>
+      </view>
 
-    </view>
-
-    <!-- NOTE: 免责声明勾选行在表单区和发布按钮之间，固定可见 -->
-    <view class="disclaimer-row">
-      <view class="disclaimer-checkbox" @tap="disclaimerAccepted = !disclaimerAccepted">
-        <view class="disclaimer-checkbox-inner" :class="{ 'disclaimer-checkbox-inner--checked': disclaimerAccepted }">
-          <text v-if="disclaimerAccepted" class="disclaimer-check-icon">✓</text>
+      <!-- 底部发布按钮 -->
+      <view class="create-footer">
+        <view
+          class="primary-btn"
+          :class="{ 'primary-btn--disabled': submitting }"
+          @tap="handleSubmitClick"
+        >
+          {{ submitting ? (editingActivityId ? '保存中...' : '发布中...') : (editingActivityId ? '保存修改' : '点击发布') }}
         </view>
       </view>
-      <text class="disclaimer-label">我已仔细阅读并同意</text>
-      <text class="disclaimer-link" @tap.stop="goToDisclaimer">《免责声明》</text>
-    </view>
-
-    <!-- 底部发布按钮 -->
-    <view class="create-footer">
-      <view
-        class="primary-btn"
-        :class="{ 'primary-btn--disabled': !canSubmit || submitting }"
-        @tap="canSubmit && !submitting ? handleSubmit() : undefined"
-      >
-        {{ submitting ? (editingActivityId ? '保存中...' : '发布中...') : (editingActivityId ? '保存修改' : '发布活动') }}
-      </view>
-    </view>
+    </scroll-view>
   </view>
 
 </template>
@@ -389,6 +391,34 @@ function handleBack() {
   uni.switchTab({ url: '/pages/index/index' })
 }
 
+// NOTE: 按鈕点击入口：始终响应。若有未填字段，弹窗列出所有缺漏项；全部填写后执行真正的 submit
+function handleSubmitClick() {
+  if (submitting.value) return
+
+  // 收集所有未填字段
+  const missing: string[] = []
+  if (!title.value.trim()) missing.push('标题')
+  if (!startDate.value || !startTime.value) missing.push('时间')
+  if (!venueName.value.trim() && !address.value.trim()) missing.push('地点')
+  if (!selectedDupr.value) missing.push('DUPR 水平')
+  if (!maxParticipantsInput.value.trim() || Number(maxParticipantsInput.value) <= 0) missing.push('人数')
+  if (!fee.value.trim()) missing.push('费用')
+  if (!contactInfo.value.trim()) missing.push('联系方式')
+  if (!disclaimerAccepted.value) missing.push('免责声明未勾选')
+
+  if (missing.length > 0) {
+    uni.showModal({
+      title: '请完善以下信息',
+      content: missing.join('、'),
+      showCancel: false,
+      confirmText: '知道了'
+    })
+    return
+  }
+
+  handleSubmit()
+}
+
 // 提交（创建或更新活动）
 async function handleSubmit() {
   if (!title.value.trim()) {
@@ -534,26 +564,22 @@ onShow(() => {
 
 <style lang="scss" scoped>
 .create-page {
-  // NOTE: 固定为一屏高度，禁止整页滚动，内容分层 flex 排列
-  // NOTE: 小程序中 page 容器已去除导航栏高度，用 100% 准确填满可视区域
+  // NOTE: 固定为一屏高度，scroll-view 内部处理滚动
   height: 100%;
   background: $ios-bg-secondary;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
+// NOTE: scroll-view 擔满全局，内容超出时自动滚动
 .create-scroll {
   flex: 1;
-  overflow: hidden;
+  height: 100%;
 }
 
+// NOTE: 表单区普通块布局，高度由内容决定
 .ios-form {
-  // NOTE: flex:1 让表单区自动占满剩余空间，不设固定底部 padding
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
 }
 
 .ios-section {
@@ -602,6 +628,8 @@ onShow(() => {
   border-radius: 50%;
   flex-shrink: 0;
   margin-right: $ios-spacing-xs;
+  // NOTE: 与广场页 card-avatar-wrap 一致，避免白色头像与白底融合
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .ios-initiator__avatar--placeholder {

@@ -1,6 +1,61 @@
 <template>
   <view class="profile-page">
-    <scroll-view class="profile-scroll" scroll-y>
+    <!-- NOTE: 登录状态检查中，显示空白背景，避免已登录用户知觉登录页闪烁 -->
+    <view v-if="profileChecking" class="profile-loading" />
+    <!-- NOTE: 未登录时显示登录界面 -->
+    <view v-else-if="!isLoggedIn" class="login-page">
+      <!-- 页面标题 -->
+      <text class="login-page-title">欢迎使用Dinknow</text>
+      <text class="login-page-subtitle">让我们一起匹克球</text>
+
+      <!-- NOTE: iOS cell 式登录表单，与主界面信息卡片风格一致 -->
+      <view class="ios-section login-form-section">
+        <!-- 头像行 -->
+        <view class="ios-cell login-cell--avatar">
+          <text class="ios-cell__label">头像</text>
+          <!-- NOTE: 用 view 包裹并设 margin-left:auto，绕过微信 button 默认 width:100% 导致靠右失效 -->
+          <view class="login-avatar-right">
+            <button
+              class="login-row-avatar-btn"
+              open-type="chooseAvatar"
+              @chooseavatar="onLoginChooseAvatar"
+            >
+              <image v-if="loginAvatarUrl" class="login-row-avatar" :src="loginAvatarUrl" mode="aspectFill" />
+              <view v-else class="login-row-avatar login-row-avatar--placeholder">
+                <image class="login-row-avatar-default" src="/static/icons/avatar-default.png" mode="aspectFill" />
+              </view>
+              <view class="login-row-avatar-badge">
+                <text class="login-row-avatar-badge-text">编辑</text>
+              </view>
+            </button>
+          </view>
+          <text class="ios-cell__chevron">›</text>
+        </view>
+
+        <!-- 分隔线 -->
+        <view class="ios-cell-separator" />
+
+        <!-- 昵称行 -->
+        <view class="ios-cell">
+          <text class="ios-cell__label">昵称</text>
+          <!-- NOTE: type=nickname 触发微信昵称授权，自动填入微信昵称建议 -->
+          <input
+            class="login-nickname-right"
+            type="nickname"
+            placeholder="请输入昵称"
+            placeholder-class="ios-input-placeholder"
+            :value="loginNickName"
+            @input="onLoginNicknameInput"
+          />
+        </view>
+      </view>
+
+      <!-- 完成登录按钮 -->
+      <view class="login-submit-btn" @tap="handleLoginSubmit">
+        <text class="login-submit-text">登录</text>
+      </view>
+    </view>
+    <scroll-view v-else class="profile-scroll" scroll-y>
       <view class="profile-body">
 
         <!-- 头像卡片：居中头像 + 编辑徽章 + 用户名 -->
@@ -33,19 +88,19 @@
           <view class="ios-cell" @tap="openNicknameEdit">
             <image class="ios-cell__row-icon" src="/static/icons/nicheng.png" mode="aspectFit" />
             <text class="ios-cell__label">昵称</text>
-            <text class="ios-cell__value">{{ nickName || '微信用户' }}</text>
+            <text :class="nickName ? 'ios-cell__value' : 'ios-cell__value ios-cell__placeholder'">{{ nickName || '请输入' }}</text>
             <text class="ios-cell__chevron">›</text>
           </view>
           <view class="ios-cell" @tap="openGenderEdit">
             <image class="ios-cell__row-icon" src="/static/icons/xingbie.png" mode="aspectFit" />
             <text class="ios-cell__label">性别</text>
-            <text class="ios-cell__value">{{ genderText }}</text>
+            <text :class="genderSet ? 'ios-cell__value' : 'ios-cell__value ios-cell__placeholder'">{{ genderText }}</text>
             <text class="ios-cell__chevron">›</text>
           </view>
           <view class="ios-cell" @tap="openRegionEdit">
             <image class="ios-cell__row-icon" src="/static/icons/diqu.png" mode="aspectFit" />
             <text class="ios-cell__label">地区</text>
-            <text class="ios-cell__value">{{ region || '请选择' }}</text>
+            <text :class="region ? 'ios-cell__value' : 'ios-cell__value ios-cell__placeholder'">{{ region || '请选择' }}</text>
             <text class="ios-cell__chevron">›</text>
           </view>
           <!-- DUPR 水平：使用原生 picker，与发起活动页保持一致 -->
@@ -69,7 +124,7 @@
           <view class="ios-cell" @tap="openSignatureEdit">
             <image class="ios-cell__row-icon" src="/static/icons/qiufeng.png" mode="aspectFit" />
             <text class="ios-cell__label">球风</text>
-            <text class="ios-cell__value ios-cell__value--ellipsis">{{ signature || '请填写' }}</text>
+            <text :class="signature ? 'ios-cell__value ios-cell__value--ellipsis' : 'ios-cell__value ios-cell__value--ellipsis ios-cell__placeholder'">{{ signature || '请填写' }}</text>
             <text class="ios-cell__chevron">›</text>
           </view>
         </view>
@@ -122,7 +177,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { login, getProfile, updateProfile } from '../../services/user'
+import { login, getProfile, updateProfile, checkLogin } from '../../services/user'
 import { getUserActivities } from '../../services/activity'
 import type { User, Activity } from '../../types'
 
@@ -140,6 +195,8 @@ const user = ref<User | null>(null)
 const nickName = ref('')
 const avatarUrl = ref('')
 const gender = ref<0 | 1 | 2>(0)
+// NOTE: genderSet 为 true 表示用户已主动设置过性别，未设置时占位文案显示「请选择」
+const genderSet = ref(false)
 const duprLevel = ref('')
 const region = ref('')
 const signature = ref('')
@@ -148,6 +205,96 @@ const myCreated = ref<Activity[]>([])
 const myJoined = ref<Activity[]>([])
 
 const saving = ref(false)
+
+// NOTE: 登录状态，false 时展示登录界面
+const isLoggedIn = ref(false)
+// NOTE: 登录状态检查中（初始为 true），检查期间页面显示空白，避免已登录用户看到登录页闪烁
+const profileChecking = ref(true)
+// NOTE: 登录界面临时头像/昵称（submit 前暂存）
+const loginAvatarUrl = ref('')
+const loginNickName = ref('')
+
+// NOTE: 检查登录状态，优先从本地缓存判断，避免云函数网络请求导致的白屏
+async function checkLoginStatus() {
+  profileChecking.value = true
+  try {
+    // 第一步：同步读取本地缓存，若有有效 profile 则立即跳过白屏
+    const cachedProfile = uni.getStorageSync('cached_profile')
+    if (cachedProfile && typeof cachedProfile.nickName === 'string' && cachedProfile.nickName.trim().length > 0) {
+      isLoggedIn.value = true
+      profileChecking.value = false
+      // 用缓存数据先填充页面，避免闪烁
+      user.value = cachedProfile
+      nickName.value = cachedProfile.nickName || ''
+      avatarUrl.value = cachedProfile.avatarUrl || ''
+      if (typeof cachedProfile.gender === 'number' && cachedProfile.gender > 0) {
+        gender.value = cachedProfile.gender as 0 | 1 | 2
+        genderSet.value = true
+      }
+      duprLevel.value = cachedProfile.duprLevel || ''
+      region.value = cachedProfile.region || ''
+      signature.value = cachedProfile.signature || ''
+      // 后台静默验证 + 刷新最新数据
+      loadProfileAndActivities()
+      return
+    }
+    // 第二步：无缓存，走云函数检查
+    const { ok } = await checkLogin()
+    isLoggedIn.value = ok
+    if (ok) {
+      await loadProfileAndActivities()
+    }
+  } catch {
+    isLoggedIn.value = false
+  } finally {
+    profileChecking.value = false
+  }
+}
+
+// NOTE: 登录界面，选择头像回调（暂存到 loginAvatarUrl，提交时再上传）
+function onLoginChooseAvatar(e: any) {
+  const tempPath = e?.detail?.avatarUrl
+  if (tempPath) loginAvatarUrl.value = tempPath
+}
+
+// NOTE: 登录界面，昵称输入
+function onLoginNicknameInput(e: any) {
+  loginNickName.value = e?.detail?.value || ''
+}
+
+// NOTE: 点击「完成登录」：上传头像（若有）→ 保存昵称 → 刷新登录状态进入主界面
+async function handleLoginSubmit() {
+  if (!loginNickName.value.trim()) {
+    uni.showToast({ title: '请填写昵称', icon: 'none' })
+    return
+  }
+  saving.value = true
+  try {
+    let finalAvatarUrl = ''
+    if (loginAvatarUrl.value) {
+      // #ifdef MP-WEIXIN
+      const cloudPath = `avatars/${Date.now()}-wechat.jpg`
+      const uploadRes = await (wx as any).cloud.uploadFile({ cloudPath, filePath: loginAvatarUrl.value })
+      finalAvatarUrl = uploadRes.fileID
+      // #endif
+    }
+    await updateProfile({
+      nickName: loginNickName.value.trim(),
+      avatarUrl: finalAvatarUrl || undefined,
+      gender: 0,
+      duprLevel: '',
+      region: '',
+      signature: ''
+    } as any)
+    uni.showToast({ title: '登录成功', icon: 'success' })
+    await checkLoginStatus()
+  } catch (err) {
+    console.error('登录失败:', err)
+    uni.showToast({ title: '登录失败，请重试', icon: 'none' })
+  } finally {
+    saving.value = false
+  }
+}
 
 // NOTE: 微信官方 open-type=chooseAvatar 回调
 async function onChooseAvatar(e: any) {
@@ -178,7 +325,8 @@ const pickerModalTitle = ref('')
 const pickerType = ref<'gender' | 'region' | 'dupr'>('gender')
 const currentPickerOptions = ref<string[]>([])
 
-const genderText = computed(() => genderOptions[gender.value] || '保密')
+// NOTE: 性别展示文字：未设置时显示「请选择」占位，已设置显示实际选项
+const genderText = computed(() => genderSet.value ? (genderOptions[gender.value] || '保密') : '请选择')
 
 async function loadProfileAndActivities() {
   try {
@@ -190,10 +338,16 @@ async function loadProfileAndActivities() {
         user.value = profile
         nickName.value = profile.nickName || ''
         avatarUrl.value = profile.avatarUrl || ''
-        gender.value = profile.gender ?? 0
+        // NOTE: gender > 0（男/女）才算用户主动设置过；gender === 0 是默认值，仍显示「请选择」
+        if (typeof profile.gender === 'number' && profile.gender > 0) {
+          gender.value = profile.gender as 0 | 1 | 2
+          genderSet.value = true
+        }
         duprLevel.value = profile.duprLevel || ''
         region.value = (profile as any).region || ''
         signature.value = (profile as any).signature || ''
+        // NOTE: 缓存 profile 到本地，下次进入时可立即跳过白屏
+        try { uni.setStorageSync('cached_profile', profile) } catch {}
       }
     }
     const activities = await getUserActivities()
@@ -202,6 +356,17 @@ async function loadProfileAndActivities() {
   } catch (e) {
     console.error('加载个人信息失败', e)
     uni.showToast({ title: '加载失败', icon: 'none' })
+  }
+}
+
+// NOTE: 轻量刷新活动场次（onShow 专用，只更新计数，不重新拉取 profile）
+async function refreshActivities() {
+  try {
+    const activities = await getUserActivities()
+    myCreated.value = Array.isArray(activities.created) ? activities.created : []
+    myJoined.value = Array.isArray(activities.joined) ? activities.joined : []
+  } catch (e) {
+    console.error('刷新活动场次失败', e)
   }
 }
 
@@ -282,6 +447,7 @@ async function selectPickerOption(value: string) {
   if (pickerType.value === 'gender') {
     const idx = genderOptions.indexOf(value)
     gender.value = (idx >= 0 ? idx : 0) as 0 | 1 | 2
+    genderSet.value = true // NOTE: 用户主动选择后标记为已设置
   } else if (pickerType.value === 'region') {
     region.value = value
   } else if (pickerType.value === 'dupr') {
@@ -334,7 +500,8 @@ function goToMyActivities(type: 'joined' | 'created') {
 }
 
 onMounted(() => {
-  loadProfileAndActivities()
+  // NOTE: 先检查登录状态，已登录则自动加载资料
+  checkLoginStatus()
   uni.$on('profileFieldSaved', async (data: { type: string; value: string }) => {
     if (data.type === 'nickname') {
       nickName.value = data.value
@@ -345,14 +512,20 @@ onMounted(() => {
   })
 })
 
-// NOTE: onShow 返回个人页时，检查 profile_region storage 是否有新选择的城市
+// NOTE: onShow 返回个人页时：未登录则重新检查（可能已在其他流程完成登录）；已登录则同步城市并刷新活动场次
 onShow(() => {
+  if (!isLoggedIn.value) {
+    checkLoginStatus()
+    return
+  }
   const saved = uni.getStorageSync('profile_region')
   if (saved) {
     region.value = saved
     uni.removeStorageSync('profile_region')
     saveProfile()
   }
+  // NOTE: 每次切回个人页都刷新场次，确保报名/退出/创建/删除后数计实时同步
+  refreshActivities()
 })
 </script>
 
@@ -410,6 +583,8 @@ onShow(() => {
   background: transparent;
   border: none;
   box-sizing: border-box;
+  // NOTE: 轻阴影与其他页面头像风格统一
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   display: block;
 }
 
@@ -715,5 +890,156 @@ onShow(() => {
 .action-sheet-sep {
   height: 0.5px;
   background: rgba(0, 0, 0, 0.04);
+}
+
+// NOTE: 登录状态检查中的空白遮罩，背景色与页面一致，用户无感知
+.profile-loading {
+  min-height: 100vh;
+  background: $ios-bg-secondary;
+}
+
+// ---- 登录界面 ----
+.login-page {
+  min-height: 100vh;
+  background: $ios-bg-secondary;
+  display: flex;
+  flex-direction: column;
+  padding: calc(#{$ios-spacing-xl} + 30px) $ios-spacing-lg $ios-spacing-xl;
+  box-sizing: border-box;
+  padding-top: calc(#{$ios-spacing-xl} + 30px + env(safe-area-inset-top));
+}
+
+.login-page-title {
+  font-size: 22px;
+  color: $ios-text-primary;
+  margin-bottom: 6px;
+}
+
+.login-page-subtitle {
+  font-size: 14px;
+  color: $ios-text-secondary;
+  margin-bottom: 100px;
+}
+
+// NOTE: 登录表单使用与主界面信息卡片相同的 ios-section，CSS 复用已定义的类名
+.login-form-section {
+  margin-bottom: $ios-spacing-lg;
+}
+
+// NOTE: 头像行 - 与其他 ios-cell 一致，右侧额外留出圆形头像空间
+.login-cell--avatar {
+  align-items: center;
+}
+
+// NOTE: 头像右对齐包裹，与主界面 ios-cell__value 布局完全一致
+.login-avatar-value {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+// NOTE: 圆形头像选择按钮，必须参考 profile-avatar-circle、但尺寸芥小以适配单行別
+.login-row-avatar-btn {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
+  display: block;
+  flex-shrink: 0;
+  &::after { border: none; }
+}
+
+// NOTE: view 包裹头像按钮并设 margin-left:auto，view 不受微信 button 默认样式影响
+.login-avatar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.login-row-avatar {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+
+.login-row-avatar--placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// NOTE: 默认头像图标撑满整个 48px 圆形区域，灰色状态
+.login-row-avatar-default {
+  width: 48px;
+  height: 48px;
+  opacity: 0.4;
+  filter: grayscale(100%);
+}
+
+.login-row-avatar-icon {
+  font-size: 22px;
+}
+
+// NOTE: 与主界面 profile-edit-badge 完全一致 - 下半圆白色半透明覆盖
+.login-row-avatar-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
+  background: rgba(100, 100, 108, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-row-avatar-badge-text {
+  font-size: 10px;
+  color: #ffffff;
+}
+
+// ios-cell-separator 在登录表单的分隔线
+.ios-cell-separator {
+  height: 0.5px;
+  background: rgba(0, 0, 0, 0.08);
+  margin-left: $ios-spacing-lg;
+}
+
+// NOTE: 昵称输入框靠右显示，与 ios-cell__input--right 效果一致但不依赖跨页 scoped CSS
+.login-nickname-right {
+  flex: 1;
+  text-align: right;
+  font-size: 16px;
+  color: $ios-text-primary;
+  background: transparent;
+  border: none;
+}
+
+.login-submit-btn {
+  width: 100%;
+  height: 54px;
+  background: $ios-blue;
+  border-radius: $ios-radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: $ios-spacing-xs;
+  &:active { opacity: 0.85; }
+}
+
+.login-submit-text {
+  font-size: 16px;
+  font-weight: $ios-font-weight-semibold;
+  color: #ffffff;
 }
 </style>

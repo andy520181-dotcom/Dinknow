@@ -457,34 +457,39 @@ async function handleLeaveActivity(activity: Activity) {
   }
 }
 
-/* 我参加的：退出按钮（iOS 风格，次要操作） */
+/* 我参加的：退出按钮（与编辑按钮尺寸、配色统一） */
 .leave-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  padding: 0 20px;
-  height: 44px;
-  font-size: 15px;
+  height: 28px;
+  min-width: 52px;
+  padding: 0 12px;
+  font-size: 13px;
   font-weight: $ios-font-weight-medium;
-  border-radius: 22px;
-  border: 1px solid $ios-separator;
-  background: $ios-bg-primary;
-  color: $ios-text-secondary;
+  line-height: 28px;
+  border-radius: 14px;
+  border: none;
+  background: $ios-blue;
+  color: #fff;
   transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 
   &::after {
     border: none;
   }
 
   &:active {
-    opacity: 0.85;
+    background: darken($ios-blue, 6%);
+    transform: scale(0.96);
   }
 
   &.leave-btn--disabled {
     opacity: 0.5;
     color: $ios-text-tertiary;
-    border-color: $ios-separator;
+    background: transparent;
+    border: 1px solid $ios-separator;
+    box-shadow: none;
   }
 }
 </style>
