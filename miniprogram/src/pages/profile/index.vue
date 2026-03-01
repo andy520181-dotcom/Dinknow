@@ -31,22 +31,26 @@
         <!-- 信息卡片 -->
         <view class="ios-section">
           <view class="ios-cell" @tap="openNicknameEdit">
+            <image class="ios-cell__row-icon" src="/static/icons/nicheng.png" mode="aspectFit" />
             <text class="ios-cell__label">昵称</text>
             <text class="ios-cell__value">{{ nickName || '微信用户' }}</text>
             <text class="ios-cell__chevron">›</text>
           </view>
           <view class="ios-cell" @tap="openGenderEdit">
+            <image class="ios-cell__row-icon" src="/static/icons/xingbie.png" mode="aspectFit" />
             <text class="ios-cell__label">性别</text>
             <text class="ios-cell__value">{{ genderText }}</text>
             <text class="ios-cell__chevron">›</text>
           </view>
           <view class="ios-cell" @tap="openRegionEdit">
+            <image class="ios-cell__row-icon" src="/static/icons/diqu.png" mode="aspectFit" />
             <text class="ios-cell__label">地区</text>
             <text class="ios-cell__value">{{ region || '请选择' }}</text>
             <text class="ios-cell__chevron">›</text>
           </view>
           <!-- DUPR 水平：使用原生 picker，与发起活动页保持一致 -->
           <view class="ios-cell ios-cell--tap">
+            <image class="ios-cell__row-icon" src="/static/icons/dupr.png" mode="aspectFit" />
             <text class="ios-cell__label">DUPR 水平</text>
             <view class="ios-cell__value ios-cell__value--right">
               <picker
@@ -63,6 +67,7 @@
             <text class="ios-cell__chevron">›</text>
           </view>
           <view class="ios-cell" @tap="openSignatureEdit">
+            <image class="ios-cell__row-icon" src="/static/icons/qiufeng.png" mode="aspectFit" />
             <text class="ios-cell__label">球风</text>
             <text class="ios-cell__value ios-cell__value--ellipsis">{{ signature || '请填写' }}</text>
             <text class="ios-cell__chevron">›</text>
@@ -72,14 +77,20 @@
         <!-- 场次统计卡片：分行显示 -->
         <view class="ios-section ios-activities-card">
           <view class="ios-activity-tile" @tap="goToMyActivities('joined')">
-            <text class="ios-activity-tile-title">我参加的</text>
+            <view class="ios-activity-tile-left">
+              <image class="ios-cell__row-icon" src="/static/icons/wocanjiade.png" mode="aspectFit" />
+              <text class="ios-activity-tile-title">我参加的</text>
+            </view>
             <view class="ios-activity-count-row">
               <text class="ios-activity-count">{{ myJoined.length }}</text>
               <text class="ios-activity-unit"> 场</text>
             </view>
           </view>
           <view class="ios-activity-tile" @tap="goToMyActivities('created')">
-            <text class="ios-activity-tile-title">我发起的</text>
+            <view class="ios-activity-tile-left">
+              <image class="ios-cell__row-icon" src="/static/icons/wofaqide.png" mode="aspectFit" />
+              <text class="ios-activity-tile-title">我发起的</text>
+            </view>
             <view class="ios-activity-count-row">
               <text class="ios-activity-count">{{ myCreated.length }}</text>
               <text class="ios-activity-unit"> 场</text>
@@ -530,6 +541,20 @@ onShow(() => {
 .ios-activity-tile-title {
   font-size: 16px;
   color: $ios-text-primary;
+}
+
+// NOTE: 图标 + 标题横排容器（我参加的 / 我发起的行）
+.ios-activity-tile-left {
+  display: flex;
+  align-items: center;
+}
+
+// NOTE: 与发起活动页图标完全一致（20x20，右边距6px）
+.ios-cell__row-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-right: 6px;
 }
 
 .ios-activity-count-row {

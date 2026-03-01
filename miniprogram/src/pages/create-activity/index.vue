@@ -12,6 +12,7 @@
         <view class="ios-section">
           <!-- 发起人：头像紧贴标签右侧（靠左），昵称占满剩余宽度右对齐 -->
           <view class="ios-cell ios-cell--initiator">
+          <image class="ios-cell__row-icon" src="/static/icons/faqiren.png" mode="aspectFit" />
             <text class="ios-cell__label">发起人</text>
             <image
               v-if="currentUser?.avatarUrl"
@@ -25,6 +26,7 @@
 
           <!-- 标题 -->
           <view class="ios-cell ios-cell--input">
+            <image class="ios-cell__row-icon" src="/static/icons/icon_title.png" mode="aspectFit" />
             <text class="ios-cell__label">标题</text>
             <input
               class="ios-cell__input ios-cell__input--right"
@@ -37,6 +39,7 @@
 
           <!-- 时间：三列选择器（日期+星期 | 开始时间 | 结束时间） -->
           <view class="ios-cell ios-cell--tap">
+            <image class="ios-cell__row-icon" src="/static/icons/shijian.png" mode="aspectFit" />
             <text class="ios-cell__label">时间</text>
             <picker
               mode="multiSelector"
@@ -55,6 +58,7 @@
 
           <!-- 地点 -->
           <view class="ios-cell ios-cell--tap" @tap="handleChooseLocation">
+            <image class="ios-cell__row-icon" src="/static/icons/dingwei.png" mode="aspectFit" />
             <text class="ios-cell__label">地点</text>
             <view class="ios-cell__value ios-cell__value--right ios-cell__value--ellipsis">
               <text v-if="venueName || address">{{ venueName || address }}</text>
@@ -65,6 +69,7 @@
 
           <!-- DUPR 水平 -->
           <view class="ios-cell ios-cell--tap">
+            <image class="ios-cell__row-icon" src="/static/icons/dupr.png" mode="aspectFit" />
             <text class="ios-cell__label">DUPR 水平</text>
             <view class="ios-cell__value ios-cell__value--right">
               <picker
@@ -83,6 +88,7 @@
 
           <!-- 人数 -->
           <view class="ios-cell ios-cell--input">
+            <image class="ios-cell__row-icon" src="/static/icons/renshu.png" mode="aspectFit" />
             <text class="ios-cell__label">人数</text>
             <input
               class="ios-cell__input ios-cell__input--right"
@@ -96,6 +102,7 @@
 
           <!-- 费用：数字输入 + 固定「元/人」后缀 -->
           <view class="ios-cell ios-cell--fee">
+            <image class="ios-cell__row-icon" src="/static/icons/feiyong.png" mode="aspectFit" />
             <text class="ios-cell__label">费用</text>
             <view class="ios-fee-row">
               <input
@@ -112,6 +119,7 @@
 
           <!-- 联系方式 -->
           <view class="ios-cell ios-cell--input">
+            <image class="ios-cell__row-icon" src="/static/icons/lianxi.png" mode="aspectFit" />
             <text class="ios-cell__label">联系方式</text>
             <input
               class="ios-cell__input ios-cell__input--right"
@@ -126,6 +134,7 @@
         <!-- 备注卡片：点击跳转到独立编辑页 -->
         <view class="ios-section">
           <view class="ios-cell ios-cell--tap" @tap="goToRemarkEdit">
+            <image class="ios-cell__row-icon" src="/static/icons/beizhu.png" mode="aspectFit" />
             <text class="ios-cell__label">备注</text>
             <view class="ios-cell__value ios-cell__value--right ios-cell__value--ellipsis">
               <text v-if="description">{{ description }}</text>
@@ -576,6 +585,14 @@ onShow(() => {
 // NOTE: 发起人行：头像紧贴标签右侧、昵称占剩余布局并靠右
 .ios-cell--initiator {
   // 本行无需额外样式，继承 ios-cell 的 flex 布局就可以
+}
+
+// NOTE: 行左侧小图标，与标签文字垂直居中对齐
+.ios-cell__row-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-right: 6px;
 }
 
 .ios-initiator__avatar {

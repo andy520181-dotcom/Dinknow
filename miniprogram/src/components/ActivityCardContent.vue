@@ -10,12 +10,12 @@
       <!-- 第一行：时间 + 地点（强制单行，地址超长时省略） -->
       <view class="info-row info-row--nowrap">
         <view class="info-chunk">
-          <image class="info-icon-img" src="/static/icons/icon-time.png" mode="aspectFit" />
+          <image class="info-icon-img" src="/static/icons/shijian.png" mode="aspectFit" />
           <text class="info-text">{{ dateTimeFull }}</text>
         </view>
         <text class="info-sep">·</text>
         <view class="info-chunk info-chunk--venue">
-          <image class="info-icon-img" src="/static/icons/icon-venue.png" mode="aspectFit" />
+          <image class="info-icon-img" src="/static/icons/dingwei.png" mode="aspectFit" />
           <text class="info-text info-text--ellipsis">{{ activity.venueName || activity.address || '—' }}</text>
         </view>
       </view>
@@ -24,17 +24,17 @@
       <view class="info-row info-row--footer">
         <view class="info-left">
           <view class="info-chunk">
-            <image class="info-icon-img" src="/static/icons/icon-dupr.png" mode="aspectFit" />
+            <image class="info-icon-img" src="/static/icons/dupr.png" mode="aspectFit" />
             <text class="info-text">{{ duprLevel || '—' }}</text>
           </view>
           <text class="info-sep">·</text>
           <view class="info-chunk">
-            <image class="info-icon-img" src="/static/icons/icon-people.png" mode="aspectFit" />
+            <image class="info-icon-img" src="/static/icons/renshu.png" mode="aspectFit" />
             <text class="info-text">{{ activity.maxParticipants }}人</text>
           </view>
           <text class="info-sep">·</text>
           <view class="info-chunk">
-            <image class="info-icon-img" src="/static/icons/icon-fee.png" mode="aspectFit" />
+            <image class="info-icon-img" src="/static/icons/feiyong.png" mode="aspectFit" />
             <text class="info-text">{{ feeText }}</text>
           </view>
         </view>
