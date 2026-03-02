@@ -70,7 +70,7 @@
               <image
                 v-if="avatarUrl"
                 class="profile-avatar"
-                :src="avatarUrl"
+                :src="getCloudImageUrl(avatarUrl)"
                 mode="aspectFill"
               />
               <view v-else class="profile-avatar profile-avatar--placeholder">
@@ -85,9 +85,9 @@
           <!-- 右侧信息区：昵称 + DUPR 水平 -->
           <view class="profile-info-right">
             <text class="profile-username">{{ nickName || '微信用户' }}</text>
-            <!-- NOTE: DUPR 图标与信息卡片 DUPR 行保持一致，使用相同的 dupr.png -->
+            <!-- NOTE: 头部 DUPR 图标使用 pikeqiu.png -->
             <view class="profile-dupr-row">
-              <image class="profile-dupr-icon" src="/static/icons/dupr.png" mode="aspectFit" />
+              <image class="profile-dupr-icon" src="/static/icons/pikeqiu.png" mode="aspectFit" />
               <text class="profile-dupr-label">{{ duprLevel || '暂未设置 DUPR 水平' }}</text>
             </view>
           </view>
@@ -188,6 +188,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { login, getProfile, updateProfile, checkLogin } from '../../services/user'
+import { getCloudImageUrl } from '../../services/cloud'
 import { getUserActivities } from '../../services/activity'
 import type { User, Activity } from '../../types'
 
@@ -216,21 +217,7 @@ const myJoined = ref<Activity[]>([])
 
 const saving = ref(false)
 
-// NOTE: cloud:// fileID 无法被渲染层直接加载，需转换为 HTTP 临时 URL
-// 已是 http/https 的直接返回，避免无谓的 API 调用
-async function resolveCloudUrl(fileID: string): Promise<string> {
-  if (!fileID) return ''
-  if (fileID.startsWith('http')) return fileID
-  try {
-    // #ifdef MP-WEIXIN
-    const res = await (wx as any).cloud.getTempFileURL({ fileList: [fileID] })
-    return res?.fileList?.[0]?.tempFileURL || fileID
-    // #endif
-    return fileID
-  } catch {
-    return fileID
-  }
-}
+
 
 // NOTE: 登录状态，false 时展示登录界面
 const isLoggedIn = ref(false)
@@ -252,6 +239,7 @@ async function checkLoginStatus() {
       // 用缓存数据先填充页面，避免闪烁
       user.value = cachedProfile
       nickName.value = cachedProfile.nickName || ''
+      // NOTE: 直接使用原始 URL，模板层 getCloudImageUrl() 同步处理 cloud://，与活动详情页一致
       avatarUrl.value = cachedProfile.avatarUrl || ''
       if (typeof cachedProfile.gender === 'number' && cachedProfile.gender > 0) {
         gender.value = cachedProfile.gender as 0 | 1 | 2
@@ -330,7 +318,7 @@ async function onChooseAvatar(e: any) {
     // #ifdef MP-WEIXIN
     const cloudPath = `avatars/${Date.now()}-wechat.jpg`
     const uploadRes = await (wx as any).cloud.uploadFile({ cloudPath, filePath: tempPath })
-    avatarUrl.value = await resolveCloudUrl(uploadRes.fileID)
+    avatarUrl.value = uploadRes.fileID
     await saveProfile()
     // #endif
   } catch (err) {
@@ -364,7 +352,7 @@ async function loadProfileAndActivities() {
         user.value = profile
         nickName.value = profile.nickName || ''
         // NOTE: cloud:// fileID 转换为可访问的 HTTP 临时 URL，避免渲染层网络错误
-        avatarUrl.value = await resolveCloudUrl(profile.avatarUrl || '')
+        avatarUrl.value = profile.avatarUrl || ''
         // NOTE: gender > 0（男/女）才算用户主动设置过；gender === 0 是默认值，仍显示「请选择」
         if (typeof profile.gender === 'number' && profile.gender > 0) {
           gender.value = profile.gender as 0 | 1 | 2
@@ -684,14 +672,11 @@ onShow(() => {
   gap: 4px;
 }
 
-// NOTE: 头像卡片中 DUPR 图标，与信息卡片行图标视觉一致，尺寸略小以匹配副标题字号
+// NOTE: 头像卡片中 DUPR 图标，按原始颜色显示
 .profile-dupr-icon {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  // NOTE: filter 将任意颜色图标强制渲染为纯白，opacity 与文字透明度保持一致
-  filter: brightness(0) invert(1);
-  opacity: 0.82;
 }
 
 // NOTE: DUPR 水平副标题，半透明白色，视觉层级低于昵称
