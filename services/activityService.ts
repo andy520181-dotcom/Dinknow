@@ -212,7 +212,25 @@ export class ActivityService {
             levelColor: dbRecord.level_color,
             status: dbRecord.status,
             type: dbRecord.type,
-            isCreator: currentUserId === dbRecord.creator_id
+            isCreator: currentUserId === dbRecord.creator_id,
+            // NOTE: 将 created_at 转为相对时间，展示活动的时效性
+            publishTime: dbRecord.created_at
+                ? ActivityService.formatRelativeTime(dbRecord.created_at)
+                : undefined
         };
+    }
+
+    /**
+     * 将 ISO 时间字符串格式化为相对时间（如"刚刚"、"3分钟前"、"2小时前"）
+     */
+    private static formatRelativeTime(isoString: string): string {
+        const diffMin = Math.floor((Date.now() - new Date(isoString).getTime()) / 60000);
+        if (diffMin < 1) return '刚刚';
+        if (diffMin < 60) return `${diffMin}分钟前`;
+        const diffHour = Math.floor(diffMin / 60);
+        if (diffHour < 24) return `${diffHour}小时前`;
+        const diffDay = Math.floor(diffHour / 24);
+        if (diffDay < 30) return `${diffDay}天前`;
+        return `${Math.floor(diffDay / 30)}个月前`;
     }
 }

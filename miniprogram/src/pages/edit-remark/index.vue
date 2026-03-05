@@ -39,10 +39,10 @@
           class="remark-textarea"
           placeholder="选填，如注意事项、装备要求等"
           :value="content"
-          :maxlength="1000"
+          :maxlength="-1"
           @input="onInput"
         />
-        <text class="remark-count">{{ content.length }}/1000</text>
+
 
       </view>
     </view>
@@ -186,7 +186,7 @@ onMounted(() => {
 }
 
 .remark-thumb-del-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: #ffffff;
   line-height: 1;
   margin-top: -1px;
@@ -213,7 +213,7 @@ onMounted(() => {
 }
 
 .remark-add-label {
-  font-size: 11px;
+  font-size: 10px;
   color: $ios-text-tertiary;
   text-align: center;
 }
@@ -228,7 +228,7 @@ onMounted(() => {
 }
 
 .remark-count {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-tertiary;
   display: block;
   text-align: right;

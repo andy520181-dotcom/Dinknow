@@ -17,20 +17,11 @@
     <!-- 输入区域 -->
     <view class="edit-field-body">
       <view class="edit-field-input-card">
+        <!-- NOTE: 昵称用 type="nickname"（键盘弹出微信昵称），球风用 type="text"（纯文本输入） -->
         <input
-          v-if="fieldType === 'nickname'"
           class="edit-field-input"
           :value="inputValue"
-          type="text"
-          :placeholder="placeholder"
-          :maxlength="maxLen"
-          focus
-          @input="onInput"
-        />
-        <textarea
-          v-else
-          class="edit-field-textarea"
-          :value="inputValue"
+          :type="fieldType === 'nickname' ? 'nickname' : 'text'"
           :placeholder="placeholder"
           :maxlength="maxLen"
           focus
@@ -165,7 +156,7 @@ function onDone() {
 }
 
 .edit-field-count {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-tertiary;
   display: block;
   text-align: right;

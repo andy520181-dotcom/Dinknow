@@ -283,7 +283,7 @@ onLoad((options: any) => {
 }
 
 .back-icon {
-  font-size: 28px;
+  font-size: 24px;
   color: $ios-text-primary;
   font-weight: 300;
   line-height: 1;
@@ -308,7 +308,7 @@ onLoad((options: any) => {
 
 .search-input {
   flex: 1;
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-primary;
   background: transparent;
   border: none;
@@ -327,13 +327,13 @@ onLoad((options: any) => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: 12px;
   color: $ios-text-secondary;
   margin-bottom: 12px;
 }
 
 .location-icon {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .current-city-tag {
@@ -342,7 +342,7 @@ onLoad((options: any) => {
   background: $ios-blue;
   color: #fff;
   border-radius: 20px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: $ios-font-weight-medium;
   
   &:active {
@@ -374,7 +374,7 @@ onLoad((options: any) => {
 .city-item {
   padding: 14px 0;
   border-bottom: 1px solid rgba($ios-separator, 0.5);
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-primary;
   
   &:active {
@@ -390,7 +390,7 @@ onLoad((options: any) => {
   padding: 60px 20px;
   text-align: center;
   color: $ios-text-tertiary;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .alphabet-index {
@@ -410,7 +410,7 @@ onLoad((options: any) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   color: $ios-blue;
   font-weight: $ios-font-weight-medium;
   transition: all 0.2s ease;

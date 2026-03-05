@@ -21,7 +21,7 @@
                   @load="hostAvatarLoaded = true"
                 />
               </view>
-              <text class="detail-initiator-name">{{ activity.hostName || '微信用户' }}</text>
+              <text class="detail-initiator-name">{{ activity.hostName || '匹克球友' }}</text>
             </view>
           </view>
           <view class="detail-row">
@@ -77,7 +77,7 @@
                   class="remark-img-wrap"
                   @tap="previewRemarkImage(idx)"
                 >
-                  <image :src="img" class="remark-img" mode="aspectFill" />
+                  <image :src="img" class="remark-img" mode="widthFix" />
                 </view>
               </view>
             </view>
@@ -109,7 +109,7 @@
                 />
               </view>
             </view>
-            <text class="participant-name-large">{{ item.nickName || '微信用户' }}</text>
+            <text class="participant-name-large">{{ item.nickName || '匹克球友' }}</text>
           </view>
 
           <!-- NOTE: "+" 占位圆：未满额且未结束时显示，不限人数 -->
@@ -132,7 +132,7 @@
               <text v-if="disclaimerAccepted" class="join-disclaimer-check-icon">✓</text>
             </view>
           </view>
-          <text class="join-disclaimer-label">我已仔细阅读并同意</text>
+          <text class="join-disclaimer-label">我已阅读并同意</text>
           <text class="join-disclaimer-link" @tap.stop="goToDisclaimer">《免责声明》</text>
         </view>
         <button 
@@ -178,7 +178,7 @@
             <view class="profile-info-section">
               <view class="profile-info-item">
                 <text class="profile-info-label">昵称</text>
-                <text class="profile-info-value">{{ profileUser.nickName || '微信用户' }}</text>
+                <text class="profile-info-value">{{ profileUser.nickName || '匹克球友' }}</text>
               </view>
               <view class="profile-info-item">
                 <text class="profile-info-label">性别</text>
@@ -220,6 +220,8 @@ const loading = ref(true)
 const joining = ref(false)
 // NOTE: 报名前必须勾选免责声明，与发起活动页逻辑一致
 const disclaimerAccepted = ref(false)
+// NOTE: 预览图片期间标记为 true，onShow 读到此标记跳过刷新，避免关闭图片后无意义的全量重载
+const isPreviewingImage = ref(false)
 // NOTE: 发起人头像加载完成标记，用于触发淡入动画
 const hostAvatarLoaded = ref(false)
 // NOTE: 监听 URL 变化并重置加载标记，避免 cloud URL 替换缓存 URL 时图片重载期间闪烁
@@ -255,7 +257,7 @@ const displayedParticipants = computed(() => {
     list.push({
       userId: act.hostId,
       avatarUrl: act.hostAvatar,
-      nickName: act.hostName || '微信用户',
+      nickName: act.hostName || '匹克球友',
       isHost: true
     })
   }
@@ -301,6 +303,7 @@ const dateTimeFullDisplay = computed(() => {
 const feeTextDisplay = computed(() => {
   const fee = activity.value?.fee
   if (fee === undefined || fee === null) return '—'
+  if (fee === -1) return 'AA'
   return fee === 0 ? '免费' : `${fee}元/人`
 })
 const duprDisplayText = computed(() => getDuprDisplayText(activity.value?.duprLevel))
@@ -442,18 +445,22 @@ onUnmounted(() => {
   stopPolling()
 })
 
-// NOTE: 定时轮询，每 1 秒静默检查参与者变化，仅在有新报名/退出时才更新 UI
+// NOTE: 定时轮询，每 5 秒静默检查参与者变化，仅在有新报名/退出时才更新 UI
 let pollingTimer: ReturnType<typeof setInterval> | null = null
-const POLLING_INTERVAL = 1000 // 1 秒
+const POLLING_INTERVAL = 5000 // 5 秒（降低频率减少 getTempFileURL 失败概率）
+// NOTE: loadActivityDetail 执行期间设为 true，避免 silentSync 并发写入产生竞态
+let isFullLoading = false
 
 /** 静默同步参与者列表：只比较人数和 userId，有变化才更新，避免整页闪烁 */
 let isSyncing = false
 async function silentSyncParticipants() {
-  if (!activityId.value || !activity.value || isSyncing) return
+  if (!activityId.value || !activity.value || isSyncing || isFullLoading) return
   isSyncing = true
   try {
     const detail = await getActivityDetail(activityId.value)
     if (!detail) return
+    // NOTE: isFullLoading 可能在云函数调用期间变为 true，此时放弃合并
+    if (isFullLoading) return
     const oldIds = (activity.value.participants || []).map((p: { userId?: string }) => p.userId).sort().join(',')
     const newIds = (detail.participants || []).map((p: { userId?: string }) => p.userId).sort().join(',')
     // 参与者列表无变化，不触发 UI 更新
@@ -479,6 +486,13 @@ async function silentSyncParticipants() {
       await new Promise(resolve => setTimeout(resolve, 800))
     }
 
+    // NOTE: 保护发起人头像——与 loadActivityDetail 一致的 keepOld 逻辑
+    // 避免云函数 getTempFileURL 偶尔失败返回 cloud:// 覆盖已有 https://
+    const prevHostAvatar = activity.value.hostAvatar
+    const newHostAvatar = detail.hostAvatar
+    const keepHostAvatar = prevHostAvatar && String(prevHostAvatar).startsWith('http')
+    const stableHostAvatar = keepHostAvatar ? prevHostAvatar : (newHostAvatar || prevHostAvatar || '')
+
     // 更新为最新参与者列表
     const mergedParticipants = (detail.participants || []).map((p: Record<string, unknown>) => {
       const op = oldParticipants.find((x: { userId?: string }) => x.userId === p.userId)
@@ -489,6 +503,7 @@ async function silentSyncParticipants() {
     })
     activity.value = {
       ...activity.value,
+      hostAvatar: stableHostAvatar,
       participants: mergedParticipants as typeof activity.value.participants,
       currentCount: detail.currentCount
     }
@@ -515,6 +530,12 @@ function stopPolling() {
 }
 
 onShow(async () => {
+  // NOTE: 预览图片关闭后也会触发 onShow，此时跳过刷新，避免不必要的数据重载
+  if (isPreviewingImage.value) {
+    isPreviewingImage.value = false
+    startPolling()
+    return
+  }
   // 页面显示时刷新活动详情（可能用户从其他页面返回，需要更新报名状态）
   if (activityId.value) {
     // loadActivityDetail 内部会先调用 loadCurrentUser，确保数据顺序正确
@@ -556,6 +577,7 @@ async function loadCurrentUser() {
 }
 
 async function loadActivityDetail(forceRefresh = false) {
+  isFullLoading = true
   loading.value = true
 
   // 先加载当前用户信息，确保能正确判断是否已报名
@@ -641,6 +663,7 @@ async function loadActivityDetail(forceRefresh = false) {
   }
 
   loading.value = false
+  isFullLoading = false
   if (!activity.value) {
     uni.showToast({ title: '活动不存在', icon: 'none' })
   }
@@ -698,7 +721,7 @@ function handleViewProfile(userId: string) {
     signatureStr = (s != null && String(s).trim() !== '') ? String(s).trim() : ''
     initial = {
       openid: userId,
-      nickName: act.hostName || '微信用户',
+      nickName: act.hostName || '匹克球友',
       avatarUrl: act.hostAvatar || '',
       gender: (actAny.hostGender != null ? Number(actAny.hostGender) : 0) as 0 | 1 | 2,
       duprLevel: (actAny.hostDuprLevel != null && actAny.hostDuprLevel !== '') ? String(actAny.hostDuprLevel) : '',
@@ -713,7 +736,7 @@ function handleViewProfile(userId: string) {
     signatureStr = (ps != null && String(ps).trim() !== '') ? String(ps).trim() : ''
     initial = {
       openid: userId,
-      nickName: (p?.nickName as string) || '微信用户',
+      nickName: (p?.nickName as string) || '匹克球友',
       avatarUrl: (p?.avatarUrl as string) || '',
       gender: (p && p.gender != null ? Number(p.gender) : 0) as 0 | 1 | 2,
       duprLevel: (p && p.duprLevel != null && p.duprLevel !== '') ? String(p.duprLevel) : '',
@@ -753,7 +776,7 @@ function handleViewProfile(userId: string) {
     const merged = {
       ...profile,
       openid: userId,
-      nickName: (profile.nickName ?? initial.nickName) || '微信用户',
+      nickName: (profile.nickName ?? initial.nickName) || '匹克球友',
       avatarUrl: initial.avatarUrl && String(initial.avatarUrl).startsWith('http') ? initial.avatarUrl : (profile.avatarUrl ?? initial.avatarUrl),
       gender: profile.gender ?? initial.gender,
       duprLevel: profile.duprLevel ?? initial.duprLevel ?? '',
@@ -781,6 +804,7 @@ function previewProfileAvatar() {
   const url = profileUser.value?.avatarUrl
   if (!url) return
   const src = getCloudImageUrl(url)
+  isPreviewingImage.value = true
   // #ifdef MP-WEIXIN
   ;(wx as any).previewImage({ current: src, urls: [src] })
   // #endif
@@ -820,6 +844,7 @@ function handleNavigate() {
 function previewRemarkImage(idx: number) {
   const imgs: string[] = (activity.value as any)?.images || []
   if (!imgs.length) return
+  isPreviewingImage.value = true
   uni.previewImage({ current: imgs[idx], urls: imgs })
 }
 
@@ -969,7 +994,8 @@ onShareTimeline(() => {
 }
 
 .activity-detail {
-  padding: $ios-spacing-lg;
+  // NOTE: 左右无边距，卡片贴边；上下保留间距
+  padding: $ios-spacing-lg 0;
 }
 
 /* 第一部分：按发起页顺序的信息区 */
@@ -1012,7 +1038,7 @@ onShareTimeline(() => {
 }
 
 .detail-label--remark {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-secondary;
   line-height: 1;
 }
@@ -1024,49 +1050,37 @@ onShareTimeline(() => {
 }
 
 .remark-images {
-  // NOTE: 两列网格；gap 统一为 8px，左右间距与行间距保持一致
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  // NOTE: 单列显示，宽度不限制，按原图尺寸显示
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   width: 100%;
-  margin-top: 4px;       // 与备注文字留一点间距
-
-  &--single {
-    grid-template-columns: 1fr;
-    max-width: 50%;
-    margin: 4px auto 4px;
-  }
+  margin-top: 4px;
 }
 
-// NOTE: WXSS 不支持 aspect-ratio，用 padding-top hack 实现 1:1 正方形
+// NOTE: 图片容器不再强制 1:1，改用自然比例
 .remark-img-wrap {
   position: relative;
   width: 100%;
-  padding-top: 100%;
-  border-radius: 8px;
   overflow: hidden;
-  background: $ios-bg-secondary;
 }
 
 .remark-img {
-  position: absolute;
-  top: 0; left: 0;
   width: 100%;
-  height: 100%;
-  border-radius: 8px;
+  display: block;
 }
 
 .detail-label {
   width: 84px;
   flex-shrink: 0;
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-secondary;
 }
 
 .detail-value {
   flex: 1;
   min-width: 0;
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-primary;
 
   &--muted {
@@ -1141,12 +1155,12 @@ onShareTimeline(() => {
 }
 
 .navigate-icon {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
 }
 
 .navigate-text {
-  font-size: 13px;
+  font-size: 12px;
   color: #ffffff;
   font-weight: 500;
 }
@@ -1178,7 +1192,7 @@ onShareTimeline(() => {
 }
 
 .detail-initiator-name {
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-primary;
 }
 
@@ -1277,7 +1291,7 @@ onShareTimeline(() => {
 }
 
 .avatar-placeholder-icon {
-  font-size: 28px;
+  font-size: 24px;
   opacity: 0.4;
 }
 
@@ -1300,7 +1314,7 @@ onShareTimeline(() => {
 .participant-add-text-large {
   position: relative;
   z-index: 1;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 300;
   color: rgba(0, 0, 0, 0.35);
   line-height: 1;
@@ -1318,7 +1332,7 @@ onShareTimeline(() => {
 }
 
 .participant-overflow-text-large {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: $ios-text-secondary;
   line-height: 1;
@@ -1341,7 +1355,7 @@ onShareTimeline(() => {
 }
 
 .participant-name-large {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-primary;
   text-align: center;
   width: 100%;
@@ -1366,7 +1380,7 @@ onShareTimeline(() => {
   justify-content: center;
 }
 .participant-overflow-text {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: $ios-text-secondary;
 }
@@ -1407,7 +1421,7 @@ onShareTimeline(() => {
 }
 
 .profile-modal-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: $ios-font-weight-semibold;
   color: $ios-text-primary;
 }
@@ -1426,7 +1440,7 @@ onShareTimeline(() => {
 }
 
 .close-icon {
-  font-size: 28px;
+  font-size: 24px;
   color: $ios-text-tertiary;
   line-height: 1;
 }
@@ -1478,7 +1492,7 @@ onShareTimeline(() => {
 }
 
 .profile-info-label {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-tertiary;
   font-weight: $ios-font-weight-medium;
 }
@@ -1493,7 +1507,7 @@ onShareTimeline(() => {
   text-align: center;
   padding: $ios-spacing-xl;
   color: $ios-text-tertiary;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 // 立即报名按钮
@@ -1518,7 +1532,7 @@ onShareTimeline(() => {
   justify-content: center;
   background: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
   color: #fff;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: $ios-font-weight-semibold;
   border-radius: 25px;
   border: none;
@@ -1575,18 +1589,18 @@ onShareTimeline(() => {
 }
 
 .join-disclaimer-check-icon {
-  font-size: 13px;
+  font-size: 12px;
   color: #ffffff;
   line-height: 1;
 }
 
 .join-disclaimer-label {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-secondary;
 }
 
 .join-disclaimer-link {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-blue;
   font-weight: $ios-font-weight-medium;
 }

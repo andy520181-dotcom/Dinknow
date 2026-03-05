@@ -119,6 +119,8 @@ const dateTime = computed(() => {
 const feeText = computed(() => {
   const fee = props.activity.fee
   if (fee === undefined || fee === null) return '—'
+  // NOTE: -1 是 AA 模式的约定值，区别于免费（0）和自定义金额
+  if (fee === -1) return 'AA'
   return fee === 0 ? '免费' : `${fee}元/人`
 })
 
@@ -218,7 +220,7 @@ defineExpose({
 }
 
 .info-text {
-  font-size: 14px;
+  font-size: 12px;
   color: $ios-text-secondary;
   line-height: 1.5;
   min-width: 0;
@@ -232,7 +234,7 @@ defineExpose({
 }
 
 .activity-info--compact .info-text {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.4;
 }
 

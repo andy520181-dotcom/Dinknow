@@ -13,7 +13,7 @@ exports.main = async (event, context) => {
     const userRes = await db.collection('users').where({ openid }).get()
     currentUser = userRes.data && userRes.data[0]
     if (!currentUser || !currentUser.nickName) {
-      return { success: false, message: '请先在个人中心完成登录' }
+      return { success: false, message: '请先登录后再报名' }
     }
   } catch (e) {
     console.error('joinActivity 检查用户登录状态失败:', e)
@@ -41,14 +41,14 @@ exports.main = async (event, context) => {
     if (existRes.data && existRes.data.length > 0) {
       return { success: false, message: '已报名过该活动' }
     }
-    
+
     // 如果用户之前退出过（status 为 'left'），更新记录为 'joined'，而不是创建新记录
     const leftRes = await db.collection('registrations').where({
       activityId,
       userId: openid,
       status: 'left'
     }).get()
-    
+
     if (leftRes.data && leftRes.data.length > 0) {
       // 更新已退出的记录为重新报名
       const registrationId = leftRes.data[0]._id
@@ -82,7 +82,7 @@ exports.main = async (event, context) => {
     const registrationsRes = await db.collection('registrations')
       .where({ activityId, status: 'joined' })
       .get()
-    
+
     const registeredUserIds = registrationsRes.data.map(r => r.userId)
     const registeredCount = registeredUserIds.length
 
@@ -130,7 +130,7 @@ exports.main = async (event, context) => {
             openid: db.command.in(registeredUserIds)
           })
           .get()
-        
+
         usersRes.data.forEach(u => {
           if (u.gender === 1) maleCount++
           else if (u.gender === 2) femaleCount++

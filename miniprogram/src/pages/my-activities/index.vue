@@ -299,38 +299,42 @@ async function handleDeleteActivity(activity: Activity) {
 
 async function handleLeaveActivity(activity: Activity) {
   if (!activity._id) return
-  // NOTE: 已结束：超过结束时间
-  if (isActivityEnded(activity)) {
-    uni.showToast({ title: '活动已结束，无法退出', icon: 'none' })
-    return
-  }
-  // NOTE: 进行中：已开始但未结束
+  // NOTE: 进行中：已开始但未结束，不允许退出
   if (isActivityInProgress(activity)) {
     uni.showToast({ title: '活动正在进行中，无法退出', icon: 'none' })
     return
   }
+
+  // NOTE: 已结束活动使用"删除活动"文案，未开始活动使用"退出活动"文案
+  const ended = isActivityEnded(activity)
+  const title = ended ? '确认删除' : '确认退出'
+  const content = ended
+    ? `确定要删除活动"${activity.title}"吗？`
+    : `确定要退出活动"${activity.title}"吗？`
+  const confirmText = ended ? '删除' : '退出'
+
   uni.showModal({
-    title: '确认退出',
-    content: `确定要退出活动"${activity.title}"吗？`,
-    confirmText: '退出',
+    title,
+    content,
+    confirmText,
     confirmColor: '#FF3B30',
     success: async (res) => {
       if (!res.confirm) return
       try {
-        uni.showLoading({ title: '退出中...' })
+        uni.showLoading({ title: ended ? '删除中...' : '退出中...' })
         const result = await leaveActivity(activity._id!)
         uni.hideLoading()
         if (result?.success === false) {
-          uni.showToast({ title: result.message || '退出失败', icon: 'none', duration: 3000 })
+          uni.showToast({ title: result.message || '操作失败', icon: 'none', duration: 3000 })
           return
         }
-        uni.showToast({ title: '退出成功', icon: 'success' })
+        uni.showToast({ title: ended ? '已删除' : '退出成功', icon: 'success' })
         uni.setStorageSync('activity_just_left', true)
         uni.$emit('activity-left', { activityId: activity._id })
         await loadList()
       } catch (err: any) {
         uni.hideLoading()
-        uni.showToast({ title: err?.errMsg || err?.message || '退出失败', icon: 'none' })
+        uni.showToast({ title: err?.errMsg || err?.message || '操作失败', icon: 'none' })
       }
     }
   })
@@ -395,7 +399,7 @@ async function handleLeaveActivity(activity: Activity) {
   height: 28px;
   min-width: 52px;
   padding: 0 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: $ios-font-weight-medium;
   line-height: 28px;
   border-radius: 14px;
@@ -448,7 +452,7 @@ async function handleLeaveActivity(activity: Activity) {
   height: 28px;
   min-width: 52px;
   padding: 0 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: $ios-font-weight-medium;
   line-height: 28px;
   border-radius: 14px;

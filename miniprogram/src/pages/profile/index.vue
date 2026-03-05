@@ -2,55 +2,55 @@
   <view class="profile-page">
     <!-- NOTE: 登录状态检查中，显示空白背景，避免已登录用户知觉登录页闪烁 -->
     <view v-if="profileChecking" class="profile-loading" />
-    <!-- NOTE: 未登录时显示登录界面 -->
-    <view v-else-if="!isLoggedIn" class="login-page">
-      <!-- 页面标题 -->
-      <text class="login-page-title">欢迎使用Dinknow</text>
-      <text class="login-page-subtitle">让我们一起匹克球</text>
+    <!-- NOTE: 自定义全屏登录页，内联 style 确保渐变生效（绕过 scoped SCSS 编译问题） -->
+    <view
+      v-else-if="!isLoggedIn"
+      class="login-page"
+      style="background: #F5F5F5;"
+    >
 
-      <!-- NOTE: iOS cell 式登录表单，与主界面信息卡片风格一致 -->
-      <view class="ios-section login-form-section">
-        <!-- 头像行 -->
-        <view class="ios-cell login-cell--avatar">
-          <text class="ios-cell__label">头像</text>
-          <!-- NOTE: 用 view 包裹并设 margin-left:auto，绕过微信 button 默认 width:100% 导致靠右失效 -->
-          <view class="login-avatar-right">
-            <button
-              class="login-row-avatar-btn"
-              open-type="chooseAvatar"
-              @chooseavatar="onLoginChooseAvatar"
+      <!-- NOTE: 品牌区块：Logo + 标题聚合居中，占据上半屏，视觉聚焦 -->
+      <view class="login-brand">
+        <view class="login-logo-circle">
+          <image class="login-logo-img" src="/static/icons/login-avatar.png" mode="aspectFit" />
+        </view>
+        <text class="login-brand-title">欢迎使用Dinknow</text>
+        <text class="login-brand-subtitle">让我们一起匹克球</text>
+      </view>
+
+      <!-- 底部按钮 + 协议区 -->
+      <view class="login-bottom">
+        <!-- NOTE: 授权登录，微信 getPhoneNumber 触发器，样式完全自定义 -->
+        <button
+          class="login-primary-btn"
+          :class="{ 'login-primary-btn--disabled': !agreedToTerms }"
+          :open-type="agreedToTerms ? 'getPhoneNumber' : ''"
+          :loading="saving"
+          @getphonenumber="onGetPhoneNumber"
+          @tap="onLoginBtnTap"
+        >
+          <text class="login-primary-text">立即登录</text>
+        </button>
+
+        <!-- 取消登录：跳转广场页以游客身份浏览 -->
+        <view class="login-cancel-btn" @tap="handleLoginCancel">
+          <text class="login-cancel-text">取消登录</text>
+        </view>
+
+        <!-- 协议勾选行 -->
+        <view class="login-terms-row">
+          <view class="login-terms-cb-wrap" @tap="agreedToTerms = !agreedToTerms">
+            <view
+              class="login-terms-checkbox"
+              :class="{ 'login-terms-checkbox--checked': agreedToTerms }"
             >
-              <image v-if="loginAvatarUrl" class="login-row-avatar" :src="loginAvatarUrl" mode="aspectFill" />
-              <view v-else class="login-row-avatar login-row-avatar--placeholder">
-                <image class="login-row-avatar-default" src="/static/icons/avatar-default.png" mode="aspectFit" />
-              </view>
-            </button>
+              <text v-if="agreedToTerms" class="login-terms-check-icon">✓</text>
+            </view>
           </view>
-          <text class="ios-cell__chevron">›</text>
-        </view>
-
-        <!-- 分隔线 -->
-        <view class="ios-cell-separator" />
-
-        <!-- 昵称行 -->
-        <view class="ios-cell">
-          <text class="ios-cell__label">昵称</text>
-          <!-- NOTE: type=nickname 触发微信昵称授权，自动填入微信昵称建议 -->
-          <input
-            class="login-nickname-right"
-            type="nickname"
-            placeholder="请输入昵称"
-            placeholder-class="ios-input-placeholder"
-            :value="loginNickName"
-            @input="onLoginNicknameInput"
-          />
+          <text class="login-terms-desc">我已阅读并同意<text class="login-terms-link" @tap="openAgreement">《用户协议》</text>和<text class="login-terms-link" @tap="openPrivacy">《隐私政策》</text></text>
         </view>
       </view>
 
-      <!-- 完成登录按钮 -->
-      <view class="login-submit-btn" @tap="handleLoginSubmit">
-        <text class="login-submit-text">登录</text>
-      </view>
     </view>
     <view v-else class="profile-scroll">
       <view class="profile-body">
@@ -77,9 +77,9 @@
               <image class="profile-edit-dot-icon" src="/static/icons/edit-avatar.png" mode="aspectFit" />
             </view>
           </view>
-          <text class="profile-hero-name">{{ nickName || '微信用户' }}</text>
+          <text class="profile-hero-name">{{ nickName || '匹克球友' }}</text>
           <view class="profile-hero-dupr">
-            <text class="profile-hero-dupr-text">{{ duprLevel || '暂未设置 DUPR 水平' }}</text>
+            <text class="profile-hero-dupr-text">{{ duprLevel || '设置 DUPR 水平' }}</text>
           </view>
         </view>
 
@@ -145,8 +145,12 @@
         <view class="logout-btn" @tap="handleLogout">
           <text class="logout-btn-text">退出登录</text>
         </view>
-        <!-- 版本号：正式版自动读取微信后台版本号 -->
-        <text class="app-version">{{ appVersion }}</text>
+        <!-- 底部：联系客服 + 版本号 -->
+        <view class="app-footer-row">
+          <button class="contact-btn" open-type="contact">联系客服</button>
+          <text class="app-footer-dot">·</text>
+          <text class="app-version">{{ appVersion }}</text>
+        </view>
 
       </view>
     </view>
@@ -172,7 +176,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { login, getProfile, updateProfile, checkLogin } from '../../services/user'
+import { login, getProfile, updateProfile, checkLogin, bindPhone } from '../../services/user'
 import { getCloudImageUrl } from '../../services/cloud'
 import { getUserActivities } from '../../services/activity'
 import type { User, Activity } from '../../types'
@@ -218,91 +222,139 @@ const saving = ref(false)
 
 
 
-// NOTE: 登录状态，false 时展示登录界面
-const isLoggedIn = ref(false)
-// NOTE: 登录状态检查中（初始为 true），检查期间页面显示空白，避免已登录用户看到登录页闪烁
-const profileChecking = ref(true)
-// NOTE: 登录界面临时头像/昵称（submit 前暂存）
-const loginAvatarUrl = ref('')
-const loginNickName = ref('')
+// NOTE: 在 ref 初始化阶段同步读缓存，预判登录状态，避免已登录用户切换到个人页时闪一下登录页
+const _cachedProfile = uni.getStorageSync('cached_profile')
+const _explicitlyLoggedOut = uni.getStorageSync('explicitly_logged_out')
+const _hasCache = !_explicitlyLoggedOut && _cachedProfile &&
+  ((typeof _cachedProfile.phone === 'string' && _cachedProfile.phone.length > 0) ||
+   (typeof _cachedProfile.nickName === 'string' && _cachedProfile.nickName.trim().length > 0))
 
-// NOTE: 检查登录状态，优先从本地缓存判断，避免云函数网络请求导致的白屏
-async function checkLoginStatus() {
-  profileChecking.value = true
-  try {
-    // 第一步：同步读取本地缓存，若有有效 profile 则立即跳过白屏
-    const cachedProfile = uni.getStorageSync('cached_profile')
-    if (cachedProfile && typeof cachedProfile.nickName === 'string' && cachedProfile.nickName.trim().length > 0) {
-      isLoggedIn.value = true
-      profileChecking.value = false
-      // 用缓存数据先填充页面，避免闪烁
-      user.value = cachedProfile
-      nickName.value = cachedProfile.nickName || ''
-      // NOTE: 直接使用原始 URL，模板层 getCloudImageUrl() 同步处理 cloud://，与活动详情页一致
-      avatarUrl.value = cachedProfile.avatarUrl || ''
-      if (typeof cachedProfile.gender === 'number' && cachedProfile.gender > 0) {
-        gender.value = cachedProfile.gender as 0 | 1 | 2
-        genderSet.value = true
-      }
-      duprLevel.value = cachedProfile.duprLevel || ''
-      region.value = cachedProfile.region || ''
-      signature.value = cachedProfile.signature || ''
-      // 后台静默验证 + 刷新最新数据
-      loadProfileAndActivities()
-      return
-    }
-    // 第二步：无缓存，走云函数检查
-    const { ok } = await checkLogin()
-    isLoggedIn.value = ok
-    if (ok) {
-      await loadProfileAndActivities()
-    }
-  } catch {
-    isLoggedIn.value = false
-  } finally {
-    profileChecking.value = false
+// NOTE: 有缓存 → 初始就是已登录 + 检查完成；无缓存 → 未登录 + 检查完成（不再白屏等网络）
+const isLoggedIn = ref(!!_hasCache)
+const profileChecking = ref(false)
+// NOTE: 用户是否已勾选同意协议，未勾选时按钮不触发授权
+const agreedToTerms = ref(false)
+
+/** 点击登录按钮时若未勾选协议，给出提示 */
+function onLoginBtnTap() {
+  if (!agreedToTerms.value) {
+    uni.showToast({ title: '请先阅读并同意用户协议和隐私政策', icon: 'none' })
   }
 }
 
-// NOTE: 登录界面，选择头像回调（暂存到 loginAvatarUrl，提交时再上传）
-function onLoginChooseAvatar(e: any) {
-  const tempPath = e?.detail?.avatarUrl
-  if (tempPath) loginAvatarUrl.value = tempPath
+function openAgreement() {
+  uni.navigateTo({ url: '/pages/user-agreement/index' })
 }
 
-// NOTE: 登录界面，昵称输入
-function onLoginNicknameInput(e: any) {
-  loginNickName.value = e?.detail?.value || ''
+function openPrivacy() {
+  uni.navigateTo({ url: '/pages/privacy-policy/index' })
 }
 
-// NOTE: 点击「完成登录」：上传头像（若有）→ 保存昵称 → 刷新登录状态进入主界面
-async function handleLoginSubmit() {
-  if (!loginNickName.value.trim()) {
-    uni.showToast({ title: '请填写昵称', icon: 'none' })
+/** 取消登录：切换到广场页，以游客身份浏览 */
+function handleLoginCancel() {
+  uni.switchTab({ url: '/pages/index/index' })
+}
+
+// NOTE: 检查登录状态，优先从本地缓存判断，避免云函数网络请求导致的白屏
+// NOTE: 兼容新版（phone）和旧版（nickName）两种登录态
+async function checkLoginStatus() {
+  // NOTE: setNavigationBarTitle 只在当前页是 profile 时才调用，避免影响其他 tabbar 页
+  function setProfileTitle(t: string) {
+    const pages = getCurrentPages()
+    const cur = pages[pages.length - 1]
+    if (cur && (cur as any).route?.includes('profile')) {
+      uni.setNavigationBarTitle({ title: t })
+    }
+  }
+
+  // NOTE: 用户主动退出后，写入此标记；读到标记说明用户不希望自动重登录
+  const explicitlyLoggedOut = uni.getStorageSync('explicitly_logged_out')
+  if (explicitlyLoggedOut) {
+    isLoggedIn.value = false
+    profileChecking.value = false
+    setProfileTitle('登录')
+    return
+  }
+
+  const cachedProfile = uni.getStorageSync('cached_profile')
+  const hasPhone = cachedProfile && typeof cachedProfile.phone === 'string' && cachedProfile.phone.length > 0
+  const hasNickName = cachedProfile && typeof cachedProfile.nickName === 'string' && cachedProfile.nickName.trim().length > 0
+
+  if (hasPhone || hasNickName) {
+    // NOTE: 有本地缓存 → 立即显示个人页，不走网络
+    isLoggedIn.value = true
+    setProfileTitle('个人中心')
+    profileChecking.value = false
+    user.value = cachedProfile
+    nickName.value = cachedProfile.nickName || ''
+    avatarUrl.value = cachedProfile.avatarUrl || ''
+    if (typeof cachedProfile.gender === 'number' && cachedProfile.gender > 0) {
+      gender.value = cachedProfile.gender as 0 | 1 | 2
+      genderSet.value = true
+    }
+    duprLevel.value = cachedProfile.duprLevel || ''
+    region.value = cachedProfile.region || ''
+    signature.value = cachedProfile.signature || ''
+    loadProfileAndActivities()
+    return
+  }
+
+  // NOTE: 无缓存（首次进入 / 清除数据后）→ 先立即显示登录页，不等网络
+  isLoggedIn.value = false
+  profileChecking.value = false
+  setProfileTitle('登录')
+
+  // NOTE: 后台静默检查云函数，如果发现已登录（旧用户清了缓存的情况）再自动切换
+  try {
+    const { ok } = await checkLogin()
+    if (ok) {
+      isLoggedIn.value = true
+      setProfileTitle('个人中心')
+      await loadProfileAndActivities()
+    }
+  } catch {
+    // 网络失败不影响登录页显示
+  }
+}
+
+/**
+ * 微信手机号一键登录回调
+ * NOTE: getPhoneNumber 返回 code，由云函数 bindPhone 调用微信 API 解密获取手机号明文
+ */
+async function onGetPhoneNumber(e: any) {
+  if (e?.detail?.errMsg !== 'getPhoneNumber:ok') {
+    uni.showToast({ title: '需要手机号才能登录', icon: 'none' })
+    return
+  }
+  const code = e?.detail?.code
+  if (!code) {
+    uni.showToast({ title: '获取失败，请重试', icon: 'none' })
     return
   }
   saving.value = true
   try {
-    let finalAvatarUrl = ''
-    if (loginAvatarUrl.value) {
-      // #ifdef MP-WEIXIN
-      const cloudPath = `avatars/${Date.now()}-wechat.jpg`
-      const uploadRes = await (wx as any).cloud.uploadFile({ cloudPath, filePath: loginAvatarUrl.value })
-      finalAvatarUrl = uploadRes.fileID
-      // #endif
+    uni.showLoading({ title: '登录中...' })
+    const res = await bindPhone(code)
+    uni.hideLoading()
+    if (res?.success) {
+      // NOTE: 主动登录成功，清除退出标记，后续 onShow 可正常自动检查登录态
+      uni.removeStorageSync('explicitly_logged_out')
+      // NOTE: 写入最小 cached_profile，确保下次 onShow 直接走缓存判断
+      const minProfile = { phone: res.phone || 'bound', openid: res.openid || '', nickName: '', avatarUrl: '' }
+      try { uni.setStorageSync('cached_profile', minProfile) } catch {}
+      // NOTE: 先加载完整 profile 数据并填充字段，再切换到个人页
+      // 这样用户看到个人页时已经是完整的已保存数据，不会闪烁初始态
+      await loadProfileAndActivities()
+      // NOTE: 数据准备好后再切换视图，避免先显示空白再跳变
+      isLoggedIn.value = true
+      uni.setNavigationBarTitle({ title: '个人中心' })
+      uni.showToast({ title: '登录成功', icon: 'success' })
+    } else {
+      uni.showToast({ title: res?.message || '登录失败，请重试', icon: 'none' })
     }
-    await updateProfile({
-      nickName: loginNickName.value.trim(),
-      avatarUrl: finalAvatarUrl || undefined,
-      gender: 0,
-      duprLevel: '',
-      region: '',
-      signature: ''
-    } as any)
-    uni.showToast({ title: '登录成功', icon: 'success' })
-    await checkLoginStatus()
   } catch (err) {
-    console.error('登录失败:', err)
+    uni.hideLoading()
+    console.error('手机号登录失败:', err)
     uni.showToast({ title: '登录失败，请重试', icon: 'none' })
   } finally {
     saving.value = false
@@ -486,7 +538,7 @@ async function saveProfile() {
   saving.value = true
   try {
     const result = await updateProfile({
-      nickName: nickName.value.trim() || '微信用户',
+      nickName: nickName.value.trim() || '匹克球友',
       avatarUrl: avatarUrl.value || user.value?.avatarUrl,
       gender: gender.value,
       duprLevel: duprLevel.value || '',
@@ -523,6 +575,8 @@ function handleLogout() {
     success: (res) => {
       if (res.confirm) {
         uni.clearStorageSync()
+        // NOTE: clearStorage 之后再写标记，防止被清掉；onShow 检查此标记跳过自动重登录
+        uni.setStorageSync('explicitly_logged_out', true)
         isLoggedIn.value = false
         nickName.value = ''
         avatarUrl.value = ''
@@ -534,6 +588,9 @@ function handleLogout() {
         signature.value = ''
         myJoined.value = []
         myCreated.value = []
+        // NOTE: 重置登录页协议勾选状态，恢复为初始未选中
+        agreedToTerms.value = false
+        uni.setNavigationBarTitle({ title: '登录' })
       }
     }
   })
@@ -572,14 +629,189 @@ onShow(() => {
 <style lang="scss" scoped>
 .profile-page {
   min-height: 100vh;
-  // NOTE: 全屏渐变：顶部极浅品牌蓝（比之前更浅）→ 底部灰白，衬托卡片轻阴影
-  background: linear-gradient(
-    to bottom,
-    #EDF3FF 0%,   /* 极浅蓝白 */
-    #EFEFF4 100%  /* 底部灰白，接近 iOS 系统背景色，使卡片阴影更明显 */
-  );
+  // NOTE: 与全局页面统一使用暖中性灰
+  background: #F5F5F5;
   display: flex;
   flex-direction: column;
+  // NOTE: 为 login-page 的定位提供包含块
+  position: relative;
+}
+
+// ---- 自定义登录页 ----
+.login-page {
+  // NOTE: 不用 position:absolute，WeChat 小程序中父无 position:relative 时绝对定位失效
+  // 改为 flex 子元素，自动撑满 profile-page，背景色可正常渲染
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  // NOTE: 与全局统一
+  background: #F5F5F5;
+  // NOTE: 水平边距不在这里设，而是各子区域自己设，避免微信 button 忽略父 padding
+  padding: 60px 0 52px;
+  box-sizing: border-box;
+}
+
+// NOTE: 品牌区块：Logo + 标题聚合居中，flex:1 占满上半屏，视觉聚焦
+.login-brand {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  // NOTE: center 让品牌整体居于上半屏偏中位置
+  justify-content: center;
+  gap: 0;
+}
+
+.login-brand-title {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.login-brand-subtitle {
+  display: block;
+  font-size: 12px;
+  color: #8888aa;
+  margin-top: 6px;
+  text-align: center;
+}
+
+// NOTE: 图片自带蓝色圆形背景，overflow:hidden 裁切成圆形展示
+.login-logo-circle {
+  width: 88px;
+  height: 88px;
+  border-radius: 44px;
+  background: transparent;
+  overflow: hidden;
+  // 精致阴影
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.login-logo-img {
+  width: 100%;
+  height: 100%;
+}
+
+// 底部按钮区 - 固定在底部
+.login-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  // NOTE: 水平 padding 在此处设，button width:100% 则基于此内容宽度计算，解决微信 button 宽度问题
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+// NOTE: 微信 getPhoneNumber 触发按钒，外观完全自定义
+// 选中后与发新活动「点击发布」按钒相同蓝色（$ios-blue）
+.login-primary-btn {
+  width: 100%;
+  height: 52px;
+  background: $ios-blue;
+  // NOTE: 与活动卡片 ios-section 圆角参数一致（$ios-radius-lg = 16px）
+  border-radius: $ios-radius-lg;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  box-shadow: 0 4px 20px rgba(10, 132, 255, 0.30);
+  &::after { border: none; }
+
+  &--disabled {
+    background: #8e8e93;
+    box-shadow: none;
+    opacity: 0.8;
+  }
+}
+
+.login-primary-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 1px;
+}
+
+// 取消按钮：半透明白底，轻边框
+.login-cancel-btn {
+  width: 100%;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.55);
+  // NOTE: 与活动卡片圆角一致
+  border-radius: $ios-radius-lg;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-cancel-text {
+  font-size: 16px;
+  color: #5a5a7a;
+}
+
+// 协议勾选行：两层 flex 确保垂直居中
+.login-terms-row {
+  display: flex;
+  flex-direction: row;
+  // NOTE: center 让勾选框+协议文字整体居中（不靠左）
+  justify-content: center;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 4px;
+  min-height: 22px;
+}
+
+// checkbox 的外层 view：height 继承 stretch，内部 flex center
+.login-terms-cb-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+}
+
+.login-terms-checkbox {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #a0a0c0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+
+  &--checked {
+    background: $ios-blue;
+    border-color: $ios-blue;
+  }
+}
+
+.login-terms-check-icon {
+  font-size: 10px;
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+// NOTE: 单根 text 嵌套链接，WeChat 小程序中最稳定的垂直居中写法
+.login-terms-desc {
+  font-size: 12px;
+  color: #8888aa;
+  line-height: 18px;
+  align-self: center;
+}
+
+.login-terms-link {
+  font-size: 12px;
+  color: $ios-blue;
+  line-height: 1.5;
 }
 
 .profile-scroll {
@@ -598,7 +830,7 @@ onShow(() => {
   overflow: hidden;
 }
 
-// ---- 头像区：居中垂直排列（无背景卡片，直接显示在页面背景上）----
+// ---- 头像区：居中垂直排列，整页使用标准灰背景 ----
 .profile-hero {
   display: flex;
   flex-direction: column;
@@ -609,7 +841,7 @@ onShow(() => {
 }
 
 .profile-hero-name {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: $ios-font-weight-semibold;
   color: #111;
   margin-top: 12px;
@@ -628,7 +860,7 @@ onShow(() => {
 }
 
 .profile-hero-dupr-text {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-tertiary;
   font-weight: $ios-font-weight-regular;
 }
@@ -701,7 +933,7 @@ onShow(() => {
 }
 
 .profile-username {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: $ios-font-weight-medium;
   // NOTE: 白色文字，在蓝色渐变背景上清晰可读
   color: #ffffff;
@@ -723,7 +955,7 @@ onShow(() => {
 
 // NOTE: DUPR 水平副标题，半透明白色，视觉层级低于昵称
 .profile-dupr-label {
-  font-size: 13px;
+  font-size: 12px;
   color: #ffffff;
 }
 
@@ -763,7 +995,7 @@ onShow(() => {
 }
 
 .ios-cell__chevron {
-  font-size: 18px;
+  font-size: 16px;
   color: $ios-text-tertiary;
   margin-left: $ios-spacing-xs;
 }
@@ -883,7 +1115,7 @@ onShow(() => {
 .edit-modal-input,
 .edit-modal-textarea {
   width: 100%;
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-primary;
   padding: $ios-spacing-sm;
   border-radius: $ios-radius-md;
@@ -916,7 +1148,7 @@ onShow(() => {
 .edit-picker-item {
   padding: $ios-spacing-md 0;
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.04);
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-primary;
 }
 
@@ -970,7 +1202,7 @@ onShow(() => {
 }
 
 .action-sheet-item-text {
-  font-size: 17px;
+  font-size: 16px;
   color: $ios-text-primary;
 }
 
@@ -1022,7 +1254,7 @@ onShow(() => {
 
 // ── 分区标题（基本资料 / 运动档案）────────────────────────
 .profile-section-title {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-tertiary;
   font-weight: $ios-font-weight-regular;
   padding: 0 16px 8px;
@@ -1030,7 +1262,7 @@ onShow(() => {
 
 // ── 退出登录按钮 ──────────────────────────────────────────
 .logout-btn {
-  margin: 20px 16px 40px;
+  margin: 20px 16px 0;
   background: #ffffff;
   border-radius: 14px;
   display: flex;
@@ -1047,12 +1279,43 @@ onShow(() => {
   font-weight: $ios-font-weight-medium;
 }
 
-.app-version {
-  display: block;
-  text-align: center;
-  font-size: 11px;
-  color: rgba(0, 0, 0, 0.2);
+// ── 底部：联系客服 + 版本号 ────────────────────────────────
+.app-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   padding-bottom: 32px;
+  margin-top: 8px;
+}
+
+.contact-btn {
+  background: transparent !important;
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  line-height: 1;
+  min-height: 0;
+  height: auto;
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.2);
+
+  &::after { display: none; }
+  &:active { opacity: 0.5; }
+}
+
+.app-footer-dot {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.2);
+}
+
+.app-version {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.2);
+  line-height: 1;
 }
 
 .profile-loading {
@@ -1073,7 +1336,7 @@ onShow(() => {
 }
 
 .login-page-title {
-  font-size: 22px;
+  font-size: 24px;
   color: $ios-text-primary;
   margin-bottom: 6px;
   // NOTE: 标题缩进与卡片左右边距对齐
@@ -1081,7 +1344,7 @@ onShow(() => {
 }
 
 .login-page-subtitle {
-  font-size: 14px;
+  font-size: 12px;
   color: $ios-text-secondary;
   margin-bottom: 100px;
   padding: 0 16px;
@@ -1154,7 +1417,7 @@ onShow(() => {
 }
 
 .login-row-avatar-icon {
-  font-size: 22px;
+  font-size: 24px;
 }
 
 // NOTE: 与主界面 profile-edit-badge 完全一致 - 下半圆白色半透明覆盖

@@ -34,6 +34,7 @@ export interface Activity {
 export interface User {
   _id?: string
   openid: string
+  phone?: string      // NOTE: 微信一键获取手机号，作为主要登录凭证
   nickName: string
   avatarUrl: string
   gender: 0 | 1 | 2 // 0 未知 1 男 2 女

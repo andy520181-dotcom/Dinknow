@@ -209,13 +209,13 @@ watch(() => props.show, (newVal) => {
 
 .app-icon-text {
   color: #fff;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: $ios-font-weight-bold;
   line-height: 1;
 }
 
 .app-name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: $ios-font-weight-medium;
   color: $ios-text-primary;
 }
@@ -238,7 +238,7 @@ watch(() => props.show, (newVal) => {
 
 .modal-title {
   display: block;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: $ios-font-weight-bold;
   color: $ios-text-primary;
   margin-bottom: 12px;
@@ -247,7 +247,7 @@ watch(() => props.show, (newVal) => {
 
 .modal-desc {
   display: block;
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-secondary;
   line-height: 1.5;
 }
@@ -289,14 +289,14 @@ watch(() => props.show, (newVal) => {
 
 .checkmark {
   color: #fff;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   line-height: 1;
 }
 
 .agreement-text {
   flex: 1;
-  font-size: 14px;
+  font-size: 12px;
   color: $ios-text-primary;
   line-height: 1.6;
   

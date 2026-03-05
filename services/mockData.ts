@@ -26,8 +26,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
         level: '3.0',
         levelColor: 'bg-yellow-100 text-yellow-800',
         status: 'open',
-        type: 'social',
-        isCreator: false
+        type: 'mixed',
+        isCreator: false,
+        publishTime: '2小时前'
     },
     {
         id: 'mock-2',
@@ -40,8 +41,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
         level: '2.0-2.5',
         levelColor: 'bg-green-100 text-green-800',
         status: 'open',
-        type: 'training',
-        isCreator: false
+        type: 'newbie',
+        isCreator: false,
+        publishTime: '昨天'
     },
     {
         id: 'mock-3',
@@ -54,7 +56,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
         level: '4.0',
         levelColor: 'bg-red-100 text-red-800',
         status: 'full',
-        type: 'match',
-        isCreator: true
+        type: 'expert',
+        isCreator: true,
+        publishTime: '3天前'
     }
 ];

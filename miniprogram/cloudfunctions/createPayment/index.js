@@ -17,7 +17,7 @@ exports.main = async (event, context) => {
     const userRes = await db.collection('users').where({ openid }).get()
     const user = userRes.data && userRes.data[0]
     if (!user || !user.nickName) {
-      return { success: false, message: '请先在个人中心完成登录' }
+      return { success: false, message: '请先登录' }
     }
   } catch (e) {
     console.error('createPayment 检查用户登录状态失败:', e)

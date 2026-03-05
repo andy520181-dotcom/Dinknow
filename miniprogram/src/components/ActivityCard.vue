@@ -1,91 +1,55 @@
 <template>
   <view class="activity-card" :class="{ 'activity-card--ended': isEnded }">
 
-    <!-- ── 第一行：发起人头像 + 活动信息 ── -->
+    <!-- ── 上段：头像（左）+ 活动信息（右） ── -->
     <view class="card-header">
-      <!-- 发起人头像 + 昵称（纵向排列） -->
-      <view class="host-avatar-col">
-        <view class="host-avatar-wrap">
-          <image
-            v-if="hostAvatarUrl"
-            :src="hostAvatarUrl"
-            class="host-avatar-img"
-            mode="aspectFill"
-          />
-          <view v-else class="host-avatar-placeholder">
-            <text class="host-avatar-icon">👤</text>
-          </view>
+      <!-- 上段：头像 60px -->
+      <view class="host-avatar-wrap">
+        <image
+          v-if="hostAvatarUrl"
+          :src="hostAvatarUrl"
+          class="host-avatar-img"
+          mode="aspectFill"
+        />
+        <view v-else class="host-avatar-placeholder">
+          <text class="host-avatar-icon">👤</text>
         </view>
-        <text class="host-nickname">{{ activity.hostName || '微信用户' }}</text>
       </view>
 
-      <!-- 活动信息块（右） -->
+      <!-- 活动信息块（右）：标题 / 时间地点 / 标签 -->
       <view class="card-info-block">
-        <!-- 标题（标题文字 + 右侧发布时间） -->
+        <!-- 标题行：标题（左）+ 费用（右） -->
         <view class="card-title-row">
           <text class="card-title">{{ activity.title }}</text>
-          <!-- NOTE: 发布时间置于标题右侧，低视觉权重 -->
-          <text v-if="publishedAgo" class="card-published-badge">{{ publishedAgo }}</text>
+          <text class="card-fee-highlight">{{ feeText }}</text>
         </view>
 
-        <!-- 时间 + 地点行 -->
+        <!-- 时间 + 地点：纯文字，无图标，强制单行省略 -->
         <view class="info-row info-row--nowrap">
-          <view class="info-chunk">
-            <image class="info-icon-img" src="/static/icons/shijian-2.png" mode="aspectFit" />
-            <text class="info-text">{{ dateTimeFull }}</text>
-          </view>
-          <text class="info-sep">·</text>
-          <view class="info-chunk info-chunk--venue">
-            <image class="info-icon-img" src="/static/icons/zhiyuandidian4.png" mode="aspectFit" />
-            <text class="info-text info-text--ellipsis">{{ activity.venueName || activity.address || '—' }}</text>
-          </view>
+          <text class="info-text info-text--ellipsis">{{ dateTimeFull }}</text>
+          <text class="info-sep-dot">·</text>
+          <text class="info-text info-text--ellipsis">{{ activity.venueName || activity.address || '—' }}</text>
         </view>
 
-        <!-- DUPR + 人数 + 费用行 -->
-        <view class="info-row">
-          <view class="info-chunk">
-            <image class="info-icon-img" src="/static/icons/pikeqiu-2.png" mode="aspectFit" />
-            <text class="info-text">{{ duprLevel || '—' }}</text>
-          </view>
-          <text class="info-sep">·</text>
-          <view class="info-chunk">
-            <image class="info-icon-img" src="/static/icons/renshu-2.png" mode="aspectFit" />
-            <text class="info-text">{{ activity.maxParticipants }}人</text>
-          </view>
-          <text class="info-sep">·</text>
-          <view class="info-chunk">
-            <image class="info-icon-img" src="/static/icons/feiyongdanju.png" mode="aspectFit" />
-            <text class="info-text">{{ feeText }}</text>
-          </view>
-          <!-- NOTE: 距离标签置于信息块右下角（分割线上方），与报名决策场景更贴近 -->
-          <text v-if="props.distanceKm != null" class="card-distance-badge">📍 {{ props.distanceKm }}km</text>
+        <!-- 矩形圆角标签行：DUPR / 人数 -->
+        <view class="card-tags-row">
+          <text v-if="duprLevel" class="card-tag">{{ duprLevel }}</text>
+          <text class="card-tag">{{ activity.maxParticipants }}人</text>
         </view>
       </view>
+    </view>
 
-      <!-- NOTE: 右上角：发起人显示三点菜单（编辑/删除/分享），非发起人显示分享按钮 -->
-      <view class="card-top-right">
-        <slot name="topRight">
-          <!-- 发起人：三点菜单 -->
-          <view v-if="props.isOwner" class="share-btn" @tap.stop="showOwnerMenu">
-            <text class="share-btn-dots">⋯</text>
-          </view>
-          <!-- 参加者：退出菜单 -->
-          <view v-else-if="props.showLeave" class="share-btn" @tap.stop="showJoinedMenu">
-            <text class="share-btn-dots">⋯</text>
-          </view>
-          <!-- 其他：直接分享 -->
-          <button
-            v-else
-            class="share-btn"
-            :class="{ 'share-btn--disabled': isEnded || isFull }"
-            :disabled="isEnded || isFull"
-            open-type="share"
-            @tap="onShareTap"
-          >
-            <text class="share-btn-dots">⋯</text>
-          </button>
-        </slot>
+    <!-- NOTE: 下段：昵称（左）+ 发布时间（中）+ 距离（右，无背景框） -->
+    <view class="card-header-footer">
+      <view class="host-avatar-label">
+        <text class="host-nickname">{{ activity.hostName || '匹克球友' }}</text>
       </view>
+      <text
+        v-if="publishedAgo"
+        class="host-published-ago"
+        :class="{ 'host-published-ago--recent': isRecentPublish }"
+      >{{ publishedAgo }}</text>
+      <text v-if="props.distanceKm != null" class="footer-distance">距离{{ props.distanceKm }}km</text>
     </view>
 
     <!-- 分割线 -->
@@ -111,7 +75,7 @@
               <text class="participant-avatar-icon">👤</text>
             </view>
           </view>
-          <text class="participant-nickname">{{ p.nickName || '球友' }}</text>
+          <text class="participant-nickname">{{ p.nickName || '匹克球友' }}</text>
         </view>
 
         <!-- "+" 占位圆：Dinknow 品牌文字叠底，+ 号叠加前景 -->
@@ -131,18 +95,29 @@
         </view>
       </view>
 
-      <!-- 报名按钮：右对齐；发起人自己不显示 -->
-      <slot name="footer">
-        <button
-          v-if="!props.isOwner"
-          class="join-btn"
-          :class="{ 'join-btn--disabled': isEnded || isFull }"
-          :disabled="isEnded || isFull"
-          @tap="handleJoinClick"
-        >
-          <text class="join-text-in-btn">{{ joinButtonText }}</text>
-        </button>
-      </slot>
+      <!-- 报名按钮 + 三点菜单（右侧） -->
+      <view class="footer-actions">
+        <slot name="footer">
+          <button
+            v-if="!props.isOwner && !props.showLeave"
+            class="join-btn"
+            :class="{ 'join-btn--disabled': isEnded || isFull }"
+            :disabled="isEnded || isFull"
+            @tap="handleJoinClick"
+          >
+            <text class="join-text-in-btn">{{ joinButtonText }}</text>
+          </button>
+        </slot>
+        <!-- NOTE: 三点菜单：仅发起人（编辑/删除）和参与者（退出）显示，路人不显示 -->
+        <slot name="topRight">
+          <view v-if="props.isOwner" class="share-btn" @tap.stop="showOwnerMenu">
+            <text class="share-btn-dots">⋯</text>
+          </view>
+          <view v-else-if="props.showLeave" class="share-btn" @tap.stop="showJoinedMenu">
+            <text class="share-btn-dots">⋯</text>
+          </view>
+        </slot>
+      </view>
     </view>
 
   </view>
@@ -187,7 +162,7 @@ function showJoinedMenu() {
   // NOTE: 已结束：不能撤回报名，但允许用户删除该历史记录
   if (isEnded.value) {
     uni.showActionSheet({
-      itemList: ['删除记录'],
+      itemList: ['删除活动'],
       success: (res) => {
         if (res.tapIndex === 0) emit('leave', props.activity)
       }
@@ -273,6 +248,8 @@ const dateTimeFull = computed(() => {
 const feeText = computed(() => {
   const fee = props.activity.fee
   if (fee === undefined || fee === null) return '—'
+  // NOTE: -1 是 AA 模式约定值
+  if (fee === -1) return 'AA'
   return fee === 0 ? '免费' : `${fee}元/人`
 })
 
@@ -285,22 +262,32 @@ const duprLevel = computed(() => {
 // ── 活动状态 ─────────────────────────────────────────
 const isEnded = computed(() => isActivityEnded(props.activity))
 
-// NOTE: 将 createdAt 时间戳转为相对时间描述，如"3小时前"/"昨天"
+// NOTE: 将 createdAt 时间戳转为相对时间描述，如"3小时前发布"/"昨天发布"
 const publishedAgo = computed(() => {
   const ts = (props.activity as any).createdAt
   if (!ts) return ''
-  const diff = Date.now() - Number(ts)
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1)  return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
+  // NOTE: 精确到秒级计算，使用毫秒差值
+  const diffMs = Date.now() - Number(ts)
+  const seconds = Math.floor(diffMs / 1000)
+  if (seconds < 60)  return '刚刚发布'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}分钟前发布`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24)   return `${hours}小时前`
+  if (hours < 24)   return `${hours}小时前发布`
   const days = Math.floor(hours / 24)
-  if (days === 1)   return '昨天'
-  if (days < 30)    return `${days}天前`
+  if (days === 1)   return '昨天发布'
+  if (days < 30)    return `${days}天前发布`
   const months = Math.floor(days / 30)
-  if (months < 12)  return `${months}个月前`
-  return `${Math.floor(months / 12)}年前`
+  if (months < 12)  return `${months}个月前发布`
+  return `${Math.floor(months / 12)}年前发布`
+})
+
+// NOTE: 12小时（含）以内发布 → 绿色高亮，超过12小时 → 默认灰色
+const RECENT_THRESHOLD_MS = 12 * 60 * 60 * 1000
+const isRecentPublish = computed(() => {
+  const ts = (props.activity as any).createdAt
+  if (!ts) return false
+  return (Date.now() - Number(ts)) <= RECENT_THRESHOLD_MS
 })
 
 // NOTE: 根据活动类型计算可报名名额（不含发起人）
@@ -393,7 +380,8 @@ const overflowCount = computed(() => {
 })
 
 // NOTE: 未满额且未超出15个时显示"+"占位
-const showAddSlot = computed(() => !isFull.value && !isEnded.value)
+// NOTE: 只要名额未满就显示 "+" 占位圆，包括已结束的活动（让用户看到还有空位）
+const showAddSlot = computed(() => !isFull.value)
 
 // ── 操作 ──────────────────────────────────────────────
 function onShareTap() {
@@ -445,20 +433,38 @@ async function handleJoinClick() {
   &--ended {}
 }
 
-// ── 第一行：发起人头像 + 信息块 ──────────────────────────
+// ── 上段：头像 + 信息块横排 ──────────────────────────
 .card-header {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
 }
 
-// 发起人头像 + 昵称纵向容器
-.host-avatar-col {
+// NOTE: 下段：昵称和发布时间在同一 flex 行，与上段相同的 gap 和左边距
+// 保证昵称在头像正下方、发布时间在信息块正下方，像素级对齐
+.card-header-footer {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+// NOTE: 宽度与 head-avatar-wrap 的 60px 精确相同，昵称居中居于头像正下方
+.host-avatar-label {
+  width: 60px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+}
+
+// NOTE: 距离，无背景框，灰色小字，margin-left:auto 推到最右侧
+.footer-distance {
+  margin-left: auto;
+  font-size: 10px;
+  color: $ios-text-tertiary;
+  white-space: nowrap;
   flex-shrink: 0;
 }
 
@@ -474,26 +480,47 @@ async function handleJoinClick() {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-// 发起人昵称
+// NOTE: 昵称 + 发布时间强制同行，小程序不支持 inline-flex 故用 flex-direction:row
+.host-name-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 3px;
+}
+
+// 发起人昵称，完整显示
 .host-nickname {
   font-size: 10px;
   color: $ios-text-secondary;
-  text-align: center;
-  max-width: 56px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.2;
 }
 
 // NOTE: 发布时间，昵称下方，极小灰字，低视觉权重
 .host-published-at {
-  font-size: 9px;
+  font-size: 10px;
   color: $ios-text-tertiary;
   text-align: center;
   max-width: 56px;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+// NOTE: 发布时间显示在 host-avatar-col 底部，与右侧 DUPR 标签行水平对齐
+.host-published-ago {
+  font-size: 10px;
+  color: $ios-text-tertiary;
+  text-align: center;
+  max-width: 60px;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  // NOTE: 12小时内发布 → 绿色高亮
+  &--recent {
+    color: #34C759;
+  }
 }
 
 .host-avatar-img {
@@ -514,7 +541,7 @@ async function handleJoinClick() {
 }
 
 .host-avatar-icon {
-  font-size: 28px;
+  font-size: 24px;
 }
 
 // Host 徽标 — 低调展示，不突出
@@ -531,7 +558,7 @@ async function handleJoinClick() {
 }
 
 .host-badge-text {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.85);
   line-height: 1;
@@ -545,57 +572,89 @@ async function handleJoinClick() {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  // NOTE: 为右上角分享按钮留出空间
-  padding-right: 28px;
 }
 
-// 标题行：@ 图标 + 标题文字
+// 标题行：标题（左）+ 费用（右）
 .card-title-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   min-width: 0;
   overflow: hidden;
+  gap: 8px;
 }
 
-// NOTE: 距离标签（位于 DUPR·人数·费用行右端，分割线上方）
-.card-distance-badge {
-  margin-left: auto;
-  padding-left: 8px;
+// NOTE: 发布时间，紧跟昵称同行显示
+.host-published-time {
+  font-size: 10px;
+  color: $ios-text-tertiary;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+
+  // NOTE: 12小时内发布 → 绿色高亮
+  &--recent {
+    color: #34C759;
+  }
+}
+
+// NOTE: 圆角标签行，小间距横排
+.card-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+// NOTE: 浅灰背景矩形圆角标签，费用/人数/DUPR 共用
+.card-tag {
+  display: inline-block;
+  background: #F2F2F7;
+  border-radius: 4px;
+  padding: 2px 8px;
   font-size: 12px;
-  color: $ios-text-tertiary;
+  color: $ios-text-secondary;
   white-space: nowrap;
-  flex-shrink: 0;
+  line-height: 1.6;
+
+  &--distance {
+    color: $ios-text-tertiary;
+  }
 }
 
-// NOTE: 标题行右侧发布时间，极小灰字，低视觉权重
-.card-published-badge {
-  margin-left: auto;
-  padding-left: 8px;
-  font-size: 11px;
-  color: $ios-text-tertiary;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.card-title-at {
-  font-size: 15px;
-  font-weight: $ios-font-weight-semibold;
-  color: $ios-blue;
-  line-height: 1.4;
-  flex-shrink: 0;
-  margin-right: 2px;
-}
-
+// 标题样式
 .card-title {
   font-size: 16px;
   font-weight: $ios-font-weight-semibold;
   color: #1a1a1a;
   line-height: 1.4;
   letter-spacing: -0.2px;
-  // NOTE: 标题超长时尾部省略号显示，与地址栏保持一致
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+// NOTE: 费用突出显示：品牌蓝色、加粗，右对齐
+.card-fee-highlight {
+  font-size: 16px;
+  font-weight: 600;
+  color: $ios-blue;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// NOTE: 标题行中的发布时间，紧跟标题右侧
+.card-published-ago {
+  font-size: 10px;
+  color: $ios-text-tertiary;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &--recent {
+    color: #34C759;
+  }
 }
 
 .info-row {
@@ -626,15 +685,18 @@ async function handleJoinClick() {
   }
 }
 
-.info-icon-img {
-  width: 12px;
-  height: 12px;
-  margin-right: 3px;
+// .info-icon-img 已删除：新布局不使用小图标
+
+// NOTE: 时间地点行的中点分隔符
+.info-sep-dot {
+  font-size: 12px;
+  color: $ios-text-tertiary;
   flex-shrink: 0;
+  margin: 0 2px;
 }
 
 .info-sep {
-  font-size: 11px;
+  font-size: 12px;
   color: $ios-text-tertiary;
   flex-shrink: 0;
   margin: 0 1px;
@@ -653,12 +715,9 @@ async function handleJoinClick() {
   }
 }
 
-// 分享按钮（绝对定位右上角）
+// NOTE: 三点按钮已移到底部 footer-actions，不再绝对定位右上角
 .card-top-right {
-  position: absolute;
-  top: $ios-spacing-md;
-  right: $ios-spacing-md;
-  z-index: 1;
+  display: none;
 }
 
 .share-btn {
@@ -701,6 +760,18 @@ async function handleJoinClick() {
   flex-direction: row;
   align-items: flex-end;
   gap: 8px;
+  // NOTE: 防止无参与者且无按钮时底部塌缩
+  min-height: 60px;
+}
+
+
+// NOTE: 底部右侧：报名按钮 + 三点菜单纵排
+.footer-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 // NOTE: footer 右侧容器：距离标签 + 报名按钮纵向排列，中间间距
@@ -736,7 +807,7 @@ async function handleJoinClick() {
 }
 
 .participant-overflow-text {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: $ios-text-secondary;
   line-height: 1;
@@ -792,10 +863,10 @@ async function handleJoinClick() {
 }
 
 .participant-avatar-icon {
-  font-size: 18px;
+  font-size: 16px;
 }
 
-// NOTE: 空心虚线圆：语义最清晰的「空位可加入」占位符
+// NOTE: 浅色虚线空心圆，语义清晰的「空位可加入」占位符
 .participant-add-slot {
   position: relative;
   width: 50px;
@@ -809,11 +880,11 @@ async function handleJoinClick() {
   justify-content: center;
 }
 
-// + 号叠在logo上方
+// + 号居中
 .participant-add-text {
   position: relative;
   z-index: 1;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 300;
   color: rgba(0, 0, 0, 0.35);
   line-height: 1;
@@ -831,8 +902,8 @@ async function handleJoinClick() {
   min-height: 30px;
   background: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
   color: #fff;
-  font-size: 13px;
-  font-weight: $ios-font-weight-semibold;
+  font-size: 12px;
+  font-weight: 400;
   border-radius: 15px;
   border: none;
   box-shadow: 0 2px 6px rgba(0, 122, 255, 0.28);
@@ -860,8 +931,8 @@ async function handleJoinClick() {
 }
 
 .join-text-in-btn {
-  font-size: 13px;
-  font-weight: $ios-font-weight-semibold;
+  font-size: 12px;
+  font-weight: 400;
   color: #fff;
 }
 </style>

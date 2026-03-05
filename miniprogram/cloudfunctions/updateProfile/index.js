@@ -29,7 +29,7 @@ exports.main = async (event, context) => {
       await db.collection('users').add({
         data: {
           openid,
-          nickName: updateData.nickName || '微信用户',
+          nickName: updateData.nickName || '匹克球友',
           avatarUrl: updateData.avatarUrl || '',
           gender: updateData.gender ?? 0,
           duprLevel: updateData.duprLevel !== undefined && updateData.duprLevel !== '' ? updateData.duprLevel : '',

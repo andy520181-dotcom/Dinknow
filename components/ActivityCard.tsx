@@ -43,10 +43,16 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onJoinClick, isCr
                     </p>
                 </div>
             </div>
+            {/* 底部行：左下角显示价格+发布时间，右侧为操作按钮 */}
             <div className="flex items-center justify-between pt-3 border-t border-slate-200/60">
-                <div className="flex items-baseline gap-0.5">
-                    {showCurrencySymbol && <span className="text-[11px] text-slate-400 font-bold uppercase">¥</span>}
-                    <span className="text-[20px] font-black text-ios-blue">{activity.price}</span>
+                <div className="flex flex-col gap-0.5">
+                    <div className="flex items-baseline gap-0.5">
+                        {showCurrencySymbol && <span className="text-[11px] text-slate-400 font-bold uppercase">¥</span>}
+                        <span className="text-[20px] font-black text-ios-blue">{activity.price}</span>
+                    </div>
+                    {activity.publishTime && (
+                        <span className="text-[10px] text-slate-400">{activity.publishTime}</span>
+                    )}
                 </div>
                 {isCreatorView ? (
                     <div className="flex gap-2">

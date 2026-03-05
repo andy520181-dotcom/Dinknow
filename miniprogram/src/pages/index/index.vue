@@ -880,12 +880,9 @@ onShareTimeline(() => {
 .index-page {
   min-height: 100vh;
   padding-bottom: 0;
-  // NOTE: 与个人页保持统一的品牌渐变背景
-  background: linear-gradient(
-    to bottom,
-    #EDF3FF 0%,
-    #EFEFF4 100%
-  );
+  // NOTE: 顶部30%保留品牌浅蓝渐变，30%后平滑衔接 iOS 标准灰
+  // 导航栏 #EDF3FF 与渐变顶部一致，分隔线不可见
+  background: #F5F5F5;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -933,7 +930,7 @@ onShareTimeline(() => {
 }
 
 .sort-tab-text {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-secondary;
   line-height: 1.4;
 }
@@ -963,7 +960,7 @@ onShareTimeline(() => {
 }
 
 .city-btn-name {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-secondary;
   line-height: 1.4;
   max-width: 60px;
@@ -997,12 +994,12 @@ onShareTimeline(() => {
 }
 
 .capsule-location-emoji {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
 }
 
 .capsule-city-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: $ios-font-weight-medium;
   color: $ios-text-primary;
   white-space: nowrap;
@@ -1042,7 +1039,7 @@ onShareTimeline(() => {
 
 .capsule-input {
   flex: 1;
-  font-size: 14px;
+  font-size: 16px;
   color: $ios-text-primary;
   background: transparent;
   border: none;
@@ -1051,7 +1048,7 @@ onShareTimeline(() => {
 
 .capsule-input-placeholder {
   color: $ios-text-tertiary;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 // 右段：筛选（嵌入胶囊内）
@@ -1152,13 +1149,13 @@ onShareTimeline(() => {
 }
 
 .filter-city-name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: $ios-font-weight-medium;
   color: $ios-text-primary;
 }
 
 .filter-city-arrow {
-  font-size: 14px;
+  font-size: 12px;
   color: $ios-text-tertiary;
 }
 
@@ -1192,7 +1189,7 @@ onShareTimeline(() => {
 }
 
 .filter-chip-text {
-  font-size: 14px;
+  font-size: 12px;
   color: $ios-text-primary;
   font-weight: $ios-font-weight-regular;
 }
@@ -1219,7 +1216,7 @@ onShareTimeline(() => {
 }
 
 .filter-reset-text {
-  font-size: 15px;
+  font-size: 16px;
   color: $ios-text-primary;
   font-weight: $ios-font-weight-medium;
 }
@@ -1237,7 +1234,7 @@ onShareTimeline(() => {
 }
 
 .filter-confirm-text {
-  font-size: 15px;
+  font-size: 16px;
   color: #fff;
   font-weight: $ios-font-weight-semibold;
 }

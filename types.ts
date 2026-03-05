@@ -11,6 +11,7 @@ export interface Activity {
     status: 'open' | 'full' | 'waitlist' | 'finished';
     type: 'newbie' | 'advanced' | 'expert' | 'mixed';
     isCreator?: boolean;
+    publishTime?: string; // 发布时间，显示于卡片左下角
 }
 
 export interface UserActivity {

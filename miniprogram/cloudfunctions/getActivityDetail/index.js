@@ -111,7 +111,7 @@ exports.main = async (event, context) => {
         try {
           const one = await cloud.getTempFileURL({ fileList: [hostAvatar] })
           if (one.fileList && one.fileList[0] && one.fileList[0].tempFileURL) hostAvatarUrl = one.fileList[0].tempFileURL
-        } catch (e2) {}
+        } catch (e2) { }
       }
     }
     const participantsWithUrl = await Promise.all(participants.map(async (p) => {
@@ -137,9 +137,30 @@ exports.main = async (event, context) => {
       }
     }))
 
+    // NOTE: 备注图片也可能是 cloud:// fileID，需要换取临时 URL 才能在前端显示
+    let remarkImages = Array.isArray(activity.images) ? activity.images : []
+    if (remarkImages.length > 0) {
+      const imageFileIDs = remarkImages.filter(url => isFileID(url))
+      if (imageFileIDs.length > 0) {
+        try {
+          const imgTempRes = await cloud.getTempFileURL({ fileList: imageFileIDs })
+          if (imgTempRes.fileList && Array.isArray(imgTempRes.fileList)) {
+            const imgMap = {}
+            imgTempRes.fileList.forEach(item => {
+              if (item.tempFileURL) imgMap[item.fileID] = item.tempFileURL
+            })
+            remarkImages = remarkImages.map(url => imgMap[url] || url)
+          }
+        } catch (e) {
+          console.error('getActivityDetail 获取备注图片临时链接失败:', e)
+        }
+      }
+    }
+
     return {
       activity: {
         ...activity,
+        images: remarkImages.length > 0 ? remarkImages : undefined,
         currentCount,
         participants: participantsWithUrl,
         hostAvatar: hostAvatarUrl,

@@ -45,13 +45,13 @@ exports.main = async (event, context) => {
   }
 
   // 检查用户是否已在个人中心完成登录（users 表中有记录且有昵称）
-  let hostName = '微信用户'
+  let hostName = '匹克球友'
   let hostAvatar = ''
   try {
     const userRes = await db.collection('users').where({ openid }).get()
     const user = userRes.data && userRes.data[0]
     if (!user || !user.nickName) {
-      return { success: false, message: '请先在个人中心完成登录后再发布活动' }
+      return { success: false, message: '请先登录后再发布活动' }
     }
     hostName = user.nickName || hostName
     hostAvatar = user.avatarUrl || ''

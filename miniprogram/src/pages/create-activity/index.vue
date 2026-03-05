@@ -7,7 +7,6 @@
           <!-- 左上角返回按键（独立于卡片之外） -->
           <view class="create-back-row" @tap="handleBack">
             <text class="create-back-icon">‹</text>
-            <text class="create-back-text">返回</text>
           </view>
 
           <!-- 主信息卡片：发起人 + 标题 + 时间 + 地点 + DUPR水平 + 人数 + 费用 + 联系方式 -->
@@ -90,11 +89,36 @@
               </view>
             </view>
 
-            <!-- 费用：数字输入 + 固定「元/人」后缀 -->
+            <!-- 费用：均摊 / 金额 标签切换，结构与联系方式栏完全对称 -->
             <view class="ios-cell ios-cell--fee">
               <image class="ios-cell__row-icon" src="/static/icons/feiyongdanju.png" mode="aspectFit" />
-              <text class="ios-cell__label">费用</text>
-              <view class="ios-fee-row">
+              <text class="ios-cell__label ios-cell__label--inline">费用</text>
+              <!-- NOTE: 标签文字与胶囊切换之间的浅灰色竖线分隔 -->
+              <view class="cell-divider" />
+              <!-- 类型切换胶囊 -->
+              <view class="contact-type-tabs">
+                <view
+                  class="contact-type-tab"
+                  :class="{ 'contact-type-tab--active': feeTypeTouched && feeType === 'aa' }"
+                  @tap="selectFeeType('aa')"
+                >
+                  <text class="contact-type-tab-text">均摊</text>
+                </view>
+                <view
+                  class="contact-type-tab"
+                  :class="{ 'contact-type-tab--active': feeTypeTouched && feeType === 'custom' }"
+                  @tap="selectFeeType('custom')"
+                >
+                  <text class="contact-type-tab-text">金额</text>
+                </view>
+              </view>
+              <!-- NOTE: 均摊时显示只读"AA"，flex:1 确保与金额行占同一右侧区域 -->
+              <text
+                v-if="feeTypeTouched && feeType === 'aa'"
+                class="ios-fee-aa"
+              >AA</text>
+              <!-- NOTE: 金额时显示数字输入框 + 元/人后缀 -->
+              <view v-if="feeTypeTouched && feeType === 'custom'" class="ios-fee-row">
                 <input
                   class="ios-fee-input"
                   type="digit"
@@ -107,10 +131,13 @@
               </view>
             </view>
 
+
             <!-- 联系方式：类型切换 + 输入框 -->
             <view class="ios-cell ios-cell--contact">
               <image class="ios-cell__row-icon" src="/static/icons/lianxifangshi.png" mode="aspectFit" />
-              <text class="ios-cell__label">联系方式</text>
+              <text class="ios-cell__label ios-cell__label--inline">联系方式</text>
+              <!-- NOTE: 标签文字与胶囊切换之间的浅灰色竖线分隔 -->
+              <view class="cell-divider" />
               <!-- 类型切换胶囊 -->
               <view class="contact-type-tabs">
                 <view
@@ -128,13 +155,24 @@
                   <text class="contact-type-tab-text">微信</text>
                 </view>
               </view>
+              <!-- NOTE: 手机和微信各一个 input，用 v-show 切换，避免切换类型时 placeholder 闪现 -->
               <input
+                v-show="contactTypeTouched && contactType === 'phone'"
                 class="ios-contact-input"
-                :type="contactType === 'phone' ? 'number' : 'text'"
-                :placeholder="contactType === 'phone' ? '请输入手机号' : '请输入微信号'"
+                type="number"
+                placeholder="请输入手机号"
                 placeholder-class="ios-input-placeholder"
-                :value="activeContactInfo"
-                @input="onContactInput"
+                :value="phoneContact"
+                @input="(e: any) => { phoneContact = e.detail.value }"
+              />
+              <input
+                v-show="contactTypeTouched && contactType === 'wechat'"
+                class="ios-contact-input"
+                type="text"
+                placeholder="请输入微信号"
+                placeholder-class="ios-input-placeholder"
+                :value="wechatContact"
+                @input="(e: any) => { wechatContact = e.detail.value }"
               />
             </view>
           </view>
@@ -160,7 +198,7 @@
             <text v-if="disclaimerAccepted" class="disclaimer-check-icon">✓</text>
           </view>
         </view>
-        <text class="disclaimer-label">我已仔细阅读并同意</text>
+        <text class="disclaimer-label">我已阅读并同意</text>
         <text class="disclaimer-link" @tap.stop="goToDisclaimer">《免责声明》</text>
       </view>
 
@@ -171,7 +209,7 @@
           :class="{ 'primary-btn--disabled': submitting }"
           @tap="handleSubmitClick"
         >
-          {{ submitting ? (editingActivityId ? '保存中...' : '发布中...') : (editingActivityId ? '保存修改' : '点击发布') }}
+          {{ submitting ? (editingActivityId ? '保存中...' : '发布中...') : (editingActivityId ? '保存修改' : '立即发布') }}
         </view>
       </view>
     </scroll-view>
@@ -205,8 +243,24 @@ const address = ref('')
 const venueName = ref('')
 const latitude = ref<number | undefined>()
 const longitude = ref<number | undefined>()
-const maxParticipantsInput = ref('')
+const maxParticipantsInput = ref('8')
 const fee = ref('')
+// NOTE: 费用类型：aa | custom。初始不高亮，首次点击后激活，与联系方式逻辑一致
+const feeType = ref<'aa' | 'custom'>('custom')
+const feeTypeTouched = ref(false)
+
+function selectFeeType(type: 'aa' | 'custom') {
+  // NOTE: 再次点击已选中的标签 → 取消选中
+  if (feeTypeTouched.value && feeType.value === type) {
+    feeTypeTouched.value = false
+    return
+  }
+  feeType.value = type
+  feeTypeTouched.value = true
+  // NOTE: 切换为 AA 时清空自定义金额，避免残留旧值
+  if (type === 'aa') fee.value = ''
+}
+
 // NOTE: 手机和微信号独立存储，切换类型时各自空白，不互相污染
 const phoneContact = ref('')
 const wechatContact = ref('')
@@ -216,6 +270,11 @@ const contactType = ref<'phone' | 'wechat'>('phone')
 const contactTypeTouched = ref(false)
 
 function selectContactType(type: 'phone' | 'wechat') {
+  // NOTE: 再次点击已选中的标签 → 取消选中
+  if (contactTypeTouched.value && contactType.value === type) {
+    contactTypeTouched.value = false
+    return
+  }
   contactType.value = type
   contactTypeTouched.value = true
 }
@@ -236,6 +295,11 @@ const editingActivityId = ref<string | null>(null)
 const currentUser = ref<User | null>(null)
 
 // NOTE: 7个必填字段全部填写后，发布按钮才可用（备注为选填，不影响）
+// 费用：选了 AA 则直接满足；选了自定义则需要有金额输入
+const feeValid = computed(() =>
+  feeTypeTouched.value && (feeType.value === 'aa' || fee.value.trim().length > 0)
+)
+
 const canSubmit = computed(() =>
   title.value.trim().length > 0 &&
   startDate.value.length > 0 &&
@@ -244,7 +308,7 @@ const canSubmit = computed(() =>
   selectedDupr.value.length > 0 &&
   maxParticipantsInput.value.trim().length > 0 &&
   Number(maxParticipantsInput.value) > 0 &&
-  fee.value.trim().length > 0 &&
+  feeValid.value &&
   activeContactInfo.value.trim().length > 0 &&
   // NOTE: 必须勾选免责声明才能发布
   disclaimerAccepted.value
@@ -345,7 +409,16 @@ function applyEditingActivityFromStorage() {
       longitude.value = editingActivity.longitude
     }
     maxParticipantsInput.value = editingActivity.maxParticipants ? String(editingActivity.maxParticipants) : '8'
-    fee.value = editingActivity.fee != null ? String(editingActivity.fee) : ''
+    // NOTE: -1 代表 AA 模式，否则为自定义金额
+    if (editingActivity.fee === -1) {
+      feeType.value = 'aa'
+      feeTypeTouched.value = true
+      fee.value = ''
+    } else {
+      feeType.value = 'custom'
+      feeTypeTouched.value = true
+      fee.value = editingActivity.fee != null ? String(editingActivity.fee) : ''
+    }
     // NOTE: 判断联系方式类型：全数字 → 手机，否则 → 微信
     const savedContact = editingActivity.contactInfo || ''
     if (/^\d+$/.test(savedContact)) {
@@ -446,7 +519,29 @@ function goToRemarkEdit() {
 }
 
 function handleBack() {
-  // 统一回到广场页，避免复杂返回栈问题
+  // NOTE: 编辑模式下未保存退出，弹确认框防止误操作丢失编辑内容
+  if (editingActivityId.value) {
+    uni.showModal({
+      title: '提示',
+      content: '当前修改尚未保存，确定要放弃吗？',
+      confirmText: '放弃',
+      confirmColor: '#FF3B30',
+      cancelText: '继续编辑',
+      success: (res) => {
+        if (res.confirm) {
+          // 清除编辑缓存，恢复初始状态
+          uni.removeStorageSync('editing_activity')
+          uni.removeStorageSync('editing_activity_remark')
+          uni.removeStorageSync('editing_activity_remark_images')
+          resetForm()
+          uni.switchTab({ url: '/pages/index/index' })
+        }
+        // 取消则留在当前页面继续编辑
+      }
+    })
+    return
+  }
+  // 非编辑模式（新建），直接返回
   uni.switchTab({ url: '/pages/index/index' })
 }
 
@@ -470,7 +565,10 @@ function handleSubmitClick() {
   if (!maxParticipantsInput.value.trim() || Number(maxParticipantsInput.value) <= 0) {
     uni.showToast({ title: '请输入人数', icon: 'none' }); return
   }
-  if (!fee.value.trim()) {
+  if (!feeTypeTouched.value) {
+    uni.showToast({ title: '请选择费用类型', icon: 'none' }); return
+  }
+  if (feeType.value === 'custom' && !fee.value.trim()) {
     uni.showToast({ title: '请输入费用', icon: 'none' }); return
   }
   if (!activeContactInfo.value.trim()) {
@@ -504,12 +602,16 @@ async function handleSubmit() {
     return
   }
 
-  const feeNum = fee.value.trim()
-    ? parseFloat(fee.value.trim())
-    : 0
-  if (fee.value.trim() && (isNaN(feeNum) || feeNum < 0)) {
-    uni.showToast({ title: '请输入正确金额', icon: 'none' })
-    return
+  // NOTE: AA 模式 fee 存 -1 作为标识，区别于免费（0）和自定义金额
+  let feeNum = 0
+  if (feeType.value === 'aa') {
+    feeNum = -1
+  } else {
+    feeNum = fee.value.trim() ? parseFloat(fee.value.trim()) : 0
+    if (fee.value.trim() && (isNaN(feeNum) || feeNum < 0)) {
+      uni.showToast({ title: '请输入正确金额', icon: 'none' })
+      return
+    }
   }
 
   // NOTE: 备注图片：临时路径上传到云存储，获取 fileID
@@ -596,8 +698,10 @@ function resetForm() {
   venueName.value = ''
   latitude.value = undefined
   longitude.value = undefined
-  maxParticipantsInput.value = ''
+  maxParticipantsInput.value = '8'
   fee.value = ''
+  feeType.value = 'custom'
+  feeTypeTouched.value = false
   phoneContact.value = ''
   wechatContact.value = ''
   description.value = ''
@@ -610,6 +714,7 @@ function resetForm() {
   remarkImages.value = []
   locationManuallySet.value = false
   contactTypeTouched.value = false
+  disclaimerAccepted.value = false
 }
 
 // 初始：加载当前用户信息 + 缓存位置 + 编辑数据 + 备注
@@ -650,7 +755,12 @@ onShow(() => {
   applyEditingActivityFromStorage()
   syncRemarkFromStorage()
   getProfile().then(profile => {
-    if (profile) currentUser.value = profile
+    if (profile) {
+      currentUser.value = profile
+    } else {
+      // NOTE: 未登录时清空表单，避免退出登录后仍显示上次填写的内容
+      resetForm()
+    }
   }).catch(() => {})
 })
 </script>
@@ -659,12 +769,8 @@ onShow(() => {
 .create-page {
   // NOTE: 固定为一屏高度，scroll-view 内部处理滚动
   height: 100%;
-  // NOTE: 与个人页保持统一的品牌渐变背景
-  background: linear-gradient(
-    to bottom,
-    #EDF3FF 0%,
-    #EFEFF4 100%
-  );
+  // NOTE: 与全局页面统一使用暖中性灰
+  background: #F5F5F5;
   display: flex;
   flex-direction: column;
 }
@@ -697,7 +803,7 @@ onShow(() => {
 }
 
 .create-back-icon {
-  font-size: 22px;
+  font-size: 24px;
   color: #333333;
   margin-right: 2px;
 }
@@ -777,6 +883,21 @@ onShow(() => {
   width: 88px;
 }
 
+// NOTE: 费用/联系方式栏专用：取消固定宽度，胶囊紧跟标签文字
+.ios-cell__label--inline {
+  width: auto;
+  margin-right: 0;
+}
+
+// NOTE: 标签文字与切换胶囊之间的浅灰竖线分隔符，与 iOS 表单分隔风格一致
+.cell-divider {
+  width: 0.5px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
 .ios-cell__value {
   flex: 1;
   font-size: 16px;
@@ -811,7 +932,7 @@ onShow(() => {
 
 .ios-time-sep {
   color: $ios-text-tertiary;
-  font-size: 14px;
+  font-size: 12px;
   margin: 0 2px;
 }
 
@@ -825,7 +946,7 @@ onShow(() => {
 }
 
 .ios-cell__chevron {
-  font-size: 18px;
+  font-size: 16px;
   color: $ios-text-tertiary;
   margin-left: $ios-spacing-xs;
 }
@@ -879,7 +1000,7 @@ onShow(() => {
 }
 
 .stepper-btn-text {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: $ios-font-weight-medium;
   color: #333333;
   line-height: 1;
@@ -888,7 +1009,7 @@ onShow(() => {
 .stepper-value {
   min-width: 44px;
   text-align: center;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: $ios-font-weight-regular;
   color: $ios-text-primary;
 }
@@ -924,7 +1045,7 @@ onShow(() => {
 }
 
 .contact-type-tab-text {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-secondary;
   white-space: nowrap;
 }
@@ -937,8 +1058,14 @@ onShow(() => {
   text-align: right;
 }
 
+// NOTE: 费用栏与联系方式栏对齐，支持标签+输入框换行排列
 .ios-cell--fee {
-  // 继承 ios-cell flex 布局
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  min-height: 60px;
+  align-items: center;
 }
 
 .ios-fee-row {
@@ -957,10 +1084,26 @@ onShow(() => {
   max-width: 100px;
 }
 
+// NOTE: 均摊时 AA 文字：flex:1 撑满剩余空间，与金额行 ios-fee-row(flex:1) 对齐同一右侧位置
+.ios-fee-aa {
+  flex: 1;
+  font-size: 16px;
+  color: $ios-text-primary;
+  text-align: right;
+}
+
 .ios-fee-unit {
   font-size: 16px;
   color: $ios-text-secondary;
   flex-shrink: 0;
+}
+
+// NOTE: AA 模式只读展示文字，与 ios-contact-input 右对齐风格一致
+.ios-fee-aa-text {
+  flex: 1;
+  font-size: 16px;
+  color: $ios-text-primary;
+  text-align: right;
 }
 
 .ios-cell--remark-top {
@@ -1024,18 +1167,20 @@ onShow(() => {
 }
 
 .disclaimer-checkbox {
-  width: 22px;
-  height: 22px;
+  // NOTE: 与登录页 login-terms-checkbox 样式完全一致
+  width: 18px;
+  height: 18px;
   margin-right: 8px;
   flex-shrink: 0;
 }
 
 .disclaimer-checkbox-inner {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
   border-radius: 50%;
-  border: 1.5px solid $ios-separator;
-  background: #ffffff;
+  border: 1.5px solid #a0a0c0;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1048,18 +1193,19 @@ onShow(() => {
 }
 
 .disclaimer-check-icon {
-  font-size: 13px;
+  font-size: 10px;
   color: #ffffff;
+  font-weight: 700;
   line-height: 1;
 }
 
 .disclaimer-label {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-text-secondary;
 }
 
 .disclaimer-link {
-  font-size: 13px;
+  font-size: 12px;
   color: $ios-blue;
   font-weight: $ios-font-weight-medium;
 }

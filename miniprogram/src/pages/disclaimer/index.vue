@@ -53,7 +53,7 @@
 // 大写标题（一、二、三）
 .section-title {
   display: block;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #1c1c1e;
   line-height: 1.6;
@@ -69,7 +69,7 @@
 // 每条编号条目
 .section-item {
   display: block;
-  font-size: 14px;
+  font-size: 12px;
   color: #3c3c43;
   line-height: 1.8;
   margin-bottom: 10px;
