@@ -204,7 +204,7 @@
               </view>
               <view class="profile-info-item">
                 <text class="profile-info-label">地区</text>
-                <text class="profile-info-value">{{ (profileUser as any)?.region && String((profileUser as any).region).trim() ? String((profileUser as any).region).trim() : '—' }}</text>
+                <text class="profile-info-value">{{ (profileUser as any)?.region && String((profileUser as any).region).trim() ? String((profileUser as any).region).trim() : '未设置' }}</text>
               </view>
               <view class="profile-info-item">
                 <text class="profile-info-label">DUPR 水平</text>
@@ -212,7 +212,7 @@
               </view>
               <view class="profile-info-item">
                 <text class="profile-info-label">球风</text>
-                <text class="profile-info-value">{{ (profileUser as any)?.signature && String((profileUser as any).signature).trim() ? String((profileUser as any).signature).trim() : '—' }}</text>
+                <text class="profile-info-value">{{ (profileUser as any)?.signature && String((profileUser as any).signature).trim() ? String((profileUser as any).signature).trim() : '未设置' }}</text>
               </view>
             </view>
           </template>
@@ -1507,7 +1507,7 @@ onShareTimeline(() => {
   align-items: center;
   justify-content: space-between;
   padding: $ios-spacing-lg;
-  border-bottom: 1px solid $ios-separator;
+  border-bottom: 0.5px solid $ios-separator;
 }
 
 .profile-modal-title {
@@ -1546,26 +1546,26 @@ onShareTimeline(() => {
 }
 
 .profile-modal-avatar {
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  border: 3px solid $ios-separator;
   background: $ios-bg-tertiary;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .profile-modal-avatar-placeholder {
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: $ios-bg-tertiary;
-  border: 3px solid $ios-separator;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .avatar-placeholder-icon-large {
-  font-size: 40px;
+  font-size: 28px;
   opacity: 0.4;
 }
 
