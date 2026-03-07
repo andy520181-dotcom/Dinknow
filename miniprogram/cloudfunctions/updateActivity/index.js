@@ -65,6 +65,14 @@ exports.main = async (event, context) => {
     if (description != null) updateData.description = String(description).trim() || undefined
     if (contactType != null) updateData.contactType = contactType
     if (images != null) updateData.images = Array.isArray(images) && images.length > 0 ? images : undefined
+    // NOTE: status 仅允许合法值，防止客户端传入非法状态
+    if (event.status != null) {
+      const validStatuses = ['pending', 'closed', 'cancelled']
+      if (validStatuses.includes(event.status)) {
+        updateData.status = event.status
+        updateData.statusChangedAt = Date.now()
+      }
+    }
 
     // NOTE: 内容安全检测 —— 编辑活动同样需要检测
     try {

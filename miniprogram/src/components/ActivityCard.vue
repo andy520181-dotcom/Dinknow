@@ -99,8 +99,8 @@
           <button
             v-if="!props.isOwner && !props.showLeave"
             class="join-btn"
-            :class="{ 'join-btn--disabled': isEnded || isFull }"
-            :disabled="isEnded || isFull"
+            :class="{ 'join-btn--disabled': isEnded || isClosed || isFull }"
+            :disabled="isEnded || isClosed || isFull"
             @tap="handleJoinClick"
           >
             <text class="join-text-in-btn">{{ joinButtonText }}</text>
@@ -176,12 +176,15 @@ function showJoinedMenu() {
   })
 }
 
-/** 发起人三点菜单：编辑 / 删除 / 分享 */
+/** 发起人三点菜单：编辑 / 截止报名（或重新开放）/ 删除 */
 function showOwnerMenu() {
   const ended = isEnded.value
+  // NOTE: status 为 'closed' 时显示「重新开放报名」，否则显示「截止报名」
+  const isClosed = (props.activity as any).status === 'closed'
+
   const items = ended
     ? ['删除活动']
-    : ['编辑活动', '删除活动']
+    : ['编辑活动', isClosed ? '重新报名' : '截止报名', '删除活动']
 
   uni.showActionSheet({
     itemList: items,
@@ -190,7 +193,11 @@ function showOwnerMenu() {
         if (res.tapIndex === 0) emit('delete', props.activity)
       } else {
         if (res.tapIndex === 0) emit('edit', props.activity)
-        else if (res.tapIndex === 1) emit('delete', props.activity)
+        else if (res.tapIndex === 1) {
+          // NOTE: 改用 uni.$emit 全局事件总线，与 activity-updated 等相同机制，彻底绕过 Vue 组件事件传播层
+          uni.$emit('closereg', props.activity)
+        }
+        else if (res.tapIndex === 2) emit('delete', props.activity)
       }
     }
   })
@@ -300,8 +307,12 @@ const registeredCount = computed(() => props.activity.currentCount ?? 0)
 
 const isFull = computed(() => registeredCount.value >= availableSlots.value)
 
+// NOTE: 发起人手动截止报名后 status 变为 'closed'，广场页/我参加的页面同步显示灰色禁用
+const isClosed = computed(() => (props.activity as any).status === 'closed')
+
 const joinButtonText = computed(() => {
   if (isEnded.value) return '已结束'
+  if (isClosed.value) return '报名已截止'
   if (isFull.value) return '报名已满'
   return '立即报名'
 })
@@ -362,8 +373,8 @@ const overflowCount = computed(() => {
 })
 
 // NOTE: 未满额且未超出15个时显示"+"占位
-// NOTE: 只要名额未满就显示 "+" 占位圆，包括已结束的活动（让用户看到还有空位）
-const showAddSlot = computed(() => !isFull.value)
+// NOTE: 截止报名（isClosed）后也隐藏 "+" 占位，与按钮禁用状态视觉一致
+const showAddSlot = computed(() => !isFull.value && !isClosed.value)
 
 // ── 操作 ──────────────────────────────────────────────
 function onShareTap() {

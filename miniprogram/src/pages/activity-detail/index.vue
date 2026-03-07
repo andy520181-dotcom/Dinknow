@@ -141,6 +141,11 @@
       </view>
 
 
+      <!-- NOTE: 报名已截止提示：非发起人且非已参与且 status=closed 时展示，代替隐藏按钮，避免用户疑惑 -->
+      <view v-if="isClosed && !isEnded && !isHost && !hasJoined" class="join-closed-tip">
+        <text class="join-closed-text">🚫 报名已截止</text>
+      </view>
+
       <!-- 第三部分：底部固定报名区（免责声明 + 立即报名按钮） -->
       <view v-if="!isEnded && canJoin" class="join-section">
         <!-- NOTE: 免责声明勾选行，与发起活动页样式完全一致 -->
@@ -386,6 +391,9 @@ const hasJoined = computed(() => {
 // 活动是否已结束（与广场页一致：使用共享 isActivityEnded）
 const isEnded = computed(() => (activity.value ? isActivityEnded(activity.value) : false))
 
+// NOTE: 发起人手动截止报名后 status 变为 'closed'，报名入口对外关闭
+const isClosed = computed(() => (activity.value as any)?.status === 'closed')
+
 // 根据活动形式计算可报名人数（不包括创建者）
 const availableSlots = computed(() => {
   if (!activity.value) return 0
@@ -431,11 +439,12 @@ const isHost = computed(() => {
   return currentOpenid === activity.value.hostId
 })
 
-// 是否显示「立即报名」按钮：活动存在、未结束、非发起人、未报名过（依赖 currentUser / 缓存判断发起人）
+// 是否显示「立即报名」按钮：活动存在、未结束、未截止、非发起人、未报名过
 const canJoin = computed(() => {
   if (!activity.value) return false
   if (isHost.value) return false // 发起人不显示报名按钮
   if (hasJoined.value) return false // 已报名过不显示
+  if (isClosed.value) return false  // NOTE: 报名已被发起人手动截止
   return true
 })
 
@@ -1601,7 +1610,32 @@ onShareTimeline(() => {
 }
 
 // 立即报名按钮
+// NOTE: 发起人截止报名后，非报名用户看到的状态提示条，样式与 join-section 对齐
+.join-closed-tip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $ios-bg-primary;
+  padding: $ios-spacing-md $ios-spacing-lg;
+  padding-bottom: calc($ios-spacing-md + env(safe-area-inset-bottom));
+  border-top: 1px solid $ios-separator;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.join-closed-text {
+  font-size: 16px;
+  font-weight: $ios-font-weight-medium;
+  color: $ios-text-secondary;
+  letter-spacing: 0.2px;
+}
+
 .join-section {
+
   position: fixed;
   bottom: 0;
   left: 0;

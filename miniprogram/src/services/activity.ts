@@ -84,6 +84,15 @@ export async function updateActivity(activityId: string, data: {
 }
 
 /**
+ * 设置活动状态（截止报名 / 重新开放 / 取消）
+ * @param activityId 活动 ID
+ * @param status 目标状态：'pending'=报名中；'closed'=截止报名；'cancelled'=取消活动
+ */
+export async function setActivityStatus(activityId: string, status: 'pending' | 'closed' | 'cancelled') {
+  return await callCloudFunction('updateActivity', { activityId, status })
+}
+
+/**
  * 删除活动
  */
 export async function deleteActivity(activityId: string) {

@@ -4,14 +4,19 @@
     <scroll-view class="create-scroll" scroll-y>
       <!-- 表单主体 -->
       <view class="ios-form">
-          <!-- 左上角返回按键（独立于卡片之外） -->
+          <!-- 左上角返回按键 -->
           <view class="create-back-row" @tap="handleBack">
             <text class="create-back-icon">‹</text>
           </view>
 
-          <!-- 主信息卡片：发起人 + 标题 + 时间 + 地点 + DUPR水平 + 人数 + 费用 + 联系方式 -->
-          <view class="ios-section">
+          <!-- NOTE: 独立模板卡：仅新建模式显示，与表单卡明确分开，代表「复用历史活动」的入口 -->
+          <view v-if="!editingActivityId" class="template-card" @tap="openTemplateSheet">
+            <text class="template-card__text">使用历史活动快速填写</text>
+            <text class="template-card__arrow">›</text>
+          </view>
 
+          <!-- 主信息卡片：标题 + 时间 + 地点 + DUPR水平 + 人数 + 费用 + 联系方式 -->
+          <view class="ios-section">
             <!-- 标题 -->
             <view class="ios-cell ios-cell--input">
               <image class="ios-cell__row-icon" src="/static/icons/biaotitubiao.png" mode="aspectFit" />
@@ -134,6 +139,7 @@
           </view>
       </view>
 
+
       <!-- NOTE: 免责声明勾选行 -->
       <view class="disclaimer-row">
         <view class="disclaimer-checkbox" @tap="disclaimerAccepted = !disclaimerAccepted">
@@ -144,6 +150,7 @@
         <text class="disclaimer-label">我已阅读并同意</text>
         <text class="disclaimer-link" @tap.stop="goToDisclaimer">《免责声明》</text>
       </view>
+
 
       <!-- 底部发布按钮 -->
       <view class="create-footer">
@@ -156,6 +163,55 @@
         </view>
       </view>
     </scroll-view>
+
+    <!-- NOTE: 模板历史活动底部半屏抽屉，点击遮罩关闭 -->
+    <view v-if="showTemplateSheet" class="template-mask" @tap="closeTemplateSheet">
+      <view class="template-sheet" @tap.stop>
+        <!-- 把手条 -->
+        <view class="template-sheet__handle" />
+
+        <!-- 标题行 -->
+        <view class="template-sheet__header">
+          <text class="template-sheet__title">历史活动</text>
+          <view class="template-sheet__close" @tap="closeTemplateSheet">
+            <text class="template-sheet__close-icon">✕</text>
+          </view>
+        </view>
+
+        <!-- 内容区 -->
+        <view class="template-sheet__body">
+          <!-- 加载中 -->
+          <view v-if="templateLoading" class="template-empty">
+            <text class="template-empty__text">加载中...</text>
+          </view>
+
+          <!-- 空态 -->
+          <view v-else-if="templateActivities.length === 0" class="template-empty">
+            <text class="template-empty__icon">📋</text>
+            <text class="template-empty__text">暂无历史活动</text>
+            <text class="template-empty__sub">发布第一个活动后，可在此快速复用</text>
+          </view>
+
+          <!-- 历史活动列表（最近 5 条） -->
+          <view v-else>
+            <view
+              v-for="act in templateActivities"
+              :key="act._id"
+              class="template-item"
+              @tap="selectTemplate(act)"
+            >
+              <view class="template-item__main">
+                <text class="template-item__title">{{ act.title }}</text>
+                <text class="template-item__meta">
+                  {{ (act as any).duprLevel || '' }}{{ (act as any).duprLevel && (act.address || (act as any).venueName) ? ' · ' : '' }}{{ (act as any).venueName || act.address || '' }}
+                </text>
+              </view>
+              <text class="template-item__arrow">›</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 
 </template>
@@ -165,10 +221,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { createActivity, updateActivity } from '../../services/activity'
+import { getUserActivities } from '../../services/activity'
 import { getProfile } from '../../services/user'
 import { callCloudFunction } from '../../services/cloud'
 import { chooseLocation } from '../../utils/location'
-import type { LocationInfo, User } from '../../types'
+import type { LocationInfo, User, Activity } from '../../types'
 import { STORAGE_USER_LOCATION } from '../../constants'
 
 // NOTE: wx 为微信小程序全局对象，uni-app 环境下由平台注入
@@ -237,8 +294,11 @@ const locationManuallySet = ref(false)
 // NOTE: 头像加载完成标记，用于触发淡入动画
 const avatarLoaded = ref(false)
 
+// NOTE: 模板底部抽屉相关状态
+const showTemplateSheet = ref(false)
+const templateActivities = ref<Activity[]>([])
+const templateLoading = ref(false)
 const submitting = ref(false)
-// NOTE: 标记是否正在返回自子页（edit-fee/edit-contact/edit-remark）
 // true  → onShow 读 Storage 同步新数据
 // false → onShow 是小程序从后台恢复，新建模式下需清空残留数据
 const returningFromSubPage = ref(false)
@@ -418,6 +478,109 @@ function applyEditingActivityFromStorage() {
     selectedDupr.value = legacyDuprMap[raw] ?? (duprLevels.includes(raw) ? raw : '')
     description.value = editingActivity.description || ''
   }
+}
+
+/**
+ * 使用上次活动作为模板回填表单（排除日期和时间，这两项需用户重新选）
+ * NOTE: 不回填 startDate / startTime / endTime，避免用户误用过期时间
+ */
+function applyTemplateActivity(act: Activity) {
+  const a = act as any
+
+  // 标题（去掉旧格式前缀）
+  let tpl = a.title || ''
+  for (const p of ['单打-', '双打-', '混双-', '不限-']) {
+    if (tpl.startsWith(p)) { tpl = tpl.substring(p.length); break }
+  }
+  title.value = tpl
+
+  // 地点
+  if (!locationManuallySet.value) {
+    address.value = a.address || ''
+    venueName.value = a.venueName || ''
+    latitude.value = a.latitude
+    longitude.value = a.longitude
+  }
+
+  // 人数
+  maxParticipantsInput.value = a.maxParticipants ? String(a.maxParticipants) : '8'
+
+  // 费用
+  if (a.fee === -1) {
+    feeType.value = 'aa'
+    feeTypeTouched.value = true
+    fee.value = ''
+  } else if (a.fee != null) {
+    feeType.value = 'custom'
+    feeTypeTouched.value = true
+    fee.value = String(a.fee)
+  }
+
+  // 联系方式
+  const savedContact = a.contactInfo || ''
+  if (savedContact) {
+    if (/^\d+$/.test(savedContact)) {
+      contactType.value = 'phone'
+      contactTypeTouched.value = true
+      phoneContact.value = savedContact
+    } else {
+      contactType.value = 'wechat'
+      contactTypeTouched.value = true
+      wechatContact.value = savedContact
+    }
+  }
+
+  // DUPR
+  const legacyDuprMap: Record<string, string> = {
+    '1.0-2.5': '初级 1.0-2.5', '3.0-3.5': '中级 3.0-3.5',
+    '4.0-4.5': '高级 4.0-4.5', '5.0+': '专业级 5.0+',
+  }
+  const raw = a.duprLevel || ''
+  selectedDupr.value = legacyDuprMap[raw] ?? (duprLevels.includes(raw) ? raw : '')
+
+  // 备注（文字部分，不回填图片避免旧图占用存储）
+  description.value = a.description || ''
+
+  uni.showToast({ title: '已回填上次活动', icon: 'success', duration: 1500 })
+}
+
+/** 点击「模板」小标签 → 加载并展开底部抽屉 */
+async function openTemplateSheet() {
+  // NOTE: 微信小程序原生 tabBar 无法被普通 view 覆盖，必须主动隐藏再恢复
+  uni.hideTabBar({ animation: false })
+  showTemplateSheet.value = true
+  if (templateActivities.value.length > 0) return
+  templateLoading.value = true
+  try {
+    const res = await getUserActivities()
+    const created = res?.created
+    // NOTE: getUserActivities 已按 createdAt desc 排序，取前 5 条为模板候选
+    templateActivities.value = Array.isArray(created) ? created.slice(0, 5) : []
+  } catch {
+    templateActivities.value = []
+  } finally {
+    templateLoading.value = false
+  }
+}
+
+/** 关闭抽屉并恢复 tabBar */
+function closeTemplateSheet() {
+  showTemplateSheet.value = false
+  uni.showTabBar({ animation: false })
+}
+
+/** 点击某条历史活动 → 二次确认后回填 */
+function selectTemplate(act: Activity) {
+  closeTemplateSheet()
+  uni.showModal({
+    title: '使用此模板',
+    content: `将回填「${act.title}」的信息，日期和时间需重新选择`,
+    confirmText: '回填',
+    cancelText: '取消',
+    success: (res) => {
+      if (res.confirm) applyTemplateActivity(act)
+    }
+  })
 }
 
 // 选择位置
@@ -911,6 +1074,7 @@ onMounted(async () => {
 
   applyEditingActivityFromStorage()
 
+
   // NOTE: 非编辑模式（新建活动）时，检测是否有保存的草稿
   if (!editingActivityId.value) {
     const draftStr = uni.getStorageSync(DRAFT_KEY)
@@ -1007,12 +1171,169 @@ onShow(() => {
   width: 100%;
 }
 
+// NOTE: 弱化模板入口：无卡片背景，浅灰文字，视觉让位给表单主体
+.template-card {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 16px 8px;
+  padding: 6px 4px;
+  transition: opacity 0.15s ease;
+
+  &:active { opacity: 0.5; }
+
+  &__text {
+    font-size: 12px;
+    color: $ios-text-tertiary;
+    font-weight: $ios-font-weight-regular;
+  }
+
+  &__arrow {
+    font-size: 12px;
+    color: $ios-text-tertiary;
+  }
+}
+
+// NOTE: 底部半屏抽屉遗罩层，对齐 profile 页 action-sheet-mask 实现
+.template-mask {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  z-index: 9999;
+  animation: maskFadeIn 0.25s ease-out;
+}
+@keyframes maskFadeIn {
+  from { background: transparent; }
+  to   { background: rgba(0, 0, 0, 0.45); }
+}
+
+// NOTE: 抽屉本体
+.template-sheet {
+  background: $ios-bg-primary;
+  border-radius: 20px 20px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: sheetSlideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+
+  &__handle {
+    width: 36px; height: 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.15);
+    margin: 12px auto 4px;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px 12px;
+    border-bottom: 0.5px solid $ios-separator;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: $ios-font-weight-semibold;
+    color: $ios-text-primary;
+  }
+
+  &__close {
+    width: 28px; height: 28px;
+    border-radius: 14px;
+    background: $ios-bg-secondary;
+    display: flex; align-items: center; justify-content: center;
+    &:active { opacity: 0.6; }
+  }
+
+  &__close-icon {
+    font-size: 12px;
+    color: $ios-text-secondary;
+    line-height: 1;
+  }
+
+  &__body {
+    padding: 8px 0 12px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+}
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+// NOTE: 空态提示
+.template-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 32px 20px;
+
+  &__icon { font-size: 32px; line-height: 1; }
+  &__text { font-size: 16px; color: $ios-text-secondary; font-weight: $ios-font-weight-medium; }
+  &__sub  { font-size: 12px; color: $ios-text-tertiary; text-align: center; }
+}
+
+// NOTE: 历史活动列表条目
+.template-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.04);
+  transition: background 0.12s ease;
+
+  &:last-child { border-bottom: none; }
+  &:active { background: $ios-bg-secondary; }
+
+  &__main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: $ios-font-weight-semibold;
+    color: $ios-text-primary;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__meta {
+    font-size: 12px;
+    color: $ios-text-secondary;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__arrow {
+    font-size: 20px;
+    color: $ios-text-tertiary;
+    margin-left: 10px;
+    flex-shrink: 0;
+  }
+}
+
 .ios-section {
   background: $ios-bg-primary;
   border-radius: 14px;
   // NOTE: margin-bottom 统一为 12px，与全局卡片间距规范一致
   margin: 0 16px $ios-spacing-md;
   overflow: hidden;
+}
+
+// NOTE: 顶部行：返回按钮（左）和模板标签（右）水平对齐
+.create-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 $ios-spacing-lg 0 0;
 }
 
 // NOTE: 返回按钮独立于信息卡片之外，在页面顶部单独显示
@@ -1369,6 +1690,33 @@ onShow(() => {
   font-size: 16px;
   color: $ios-text-primary;
   line-height: 1.5;
+}
+
+// NOTE: 方案 A 模板入口：发布按钮上方居中文字链接，低调不抢眼
+.template-link-row {
+  display: flex;
+  justify-content: center;
+  padding: 0 $ios-spacing-lg $ios-spacing-sm;
+}
+
+.template-link {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  transition: opacity 0.15s ease;
+
+  &:active { opacity: 0.5; }
+
+  &__text {
+    font-size: 12px;
+    color: $ios-text-tertiary;
+  }
+
+  &__arrow {
+    font-size: 12px;
+    color: $ios-text-tertiary;
+  }
 }
 
 .create-footer {

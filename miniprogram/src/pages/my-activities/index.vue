@@ -10,7 +10,7 @@
       <view
         v-for="activity in list"
         :key="activity._id"
-        :class="['activity-card-wrap', { 'activity-card-wrap--ended': isActivityEnded(activity) }]"
+        :class="['activity-card-wrap', { 'activity-card-wrap--ended': isActivityEnded(activity) || (activity as any).status === 'closed' }]"
         @tap="handleViewActivity(activity)"
       >
         <ActivityCard
@@ -30,7 +30,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
-import { getUserActivities, getActivityDetail, deleteActivity, leaveActivity } from '../../services/activity'
+import { getUserActivities, getActivityDetail, deleteActivity, leaveActivity, setActivityStatus } from '../../services/activity'
 import type { Activity } from '../../types'
 import { isActivityEnded, isActivityInProgress } from '../../utils/activity'
 import { getCurrentUserFromCache, mergeCurrentUserAvatar } from '../../utils/avatarSync'
@@ -144,7 +144,9 @@ async function loadList(silent = false) {
             : act.hostAvatar,
           hostName: detail.hostName ?? act.hostName,
           participants: Array.isArray(detail.participants) ? detail.participants : (Array.isArray(act.participants) ? act.participants : []),
-          currentCount: detail.currentCount ?? act.currentCount
+          currentCount: detail.currentCount ?? act.currentCount,
+          // NOTE: 必须同步 status，否则截止/重新开放后卡片 status 被丢弃，三点菜单无法正确切换
+          status: (detail as any).status ?? (act as any).status
         }
       })
     }
@@ -172,7 +174,9 @@ async function loadList(silent = false) {
           isValidUrl3(act.hostAvatar) &&
           old.hostAvatar === act.hostAvatar &&
           old.currentCount === act.currentCount &&
-          (old.participants?.length ?? 0) === (act.participants?.length ?? 0)
+          (old.participants?.length ?? 0) === (act.participants?.length ?? 0) &&
+          // NOTE: status 变化时不得短路，必须用新对象否则三点菜单状态永远不更新
+          (old as any).status === (act as any).status
         ) {
           return old
         }
@@ -227,6 +231,8 @@ onMounted(() => {
   uni.$on('activity-created', handleActivityCreated)
   uni.$on('activity-updated', handleActivityUpdated)
   uni.$on('activity-deleted', handleActivityDeleted)
+  // NOTE: 改用 uni.$on 全局事件总线截止/重新开放报名，与 activity-updated 等相同机制
+  uni.$on('closereg', handleCloseRegistration)
 })
 
 onUnmounted(() => {
@@ -237,6 +243,7 @@ onUnmounted(() => {
   uni.$off('activity-created', handleActivityCreated)
   uni.$off('activity-updated', handleActivityUpdated)
   uni.$off('activity-deleted', handleActivityDeleted)
+  uni.$off('closereg', handleCloseRegistration)
 })
 
 function handleViewActivity(activity: Activity) {
@@ -304,6 +311,50 @@ async function handleDeleteActivity(activity: Activity) {
       } catch (err: any) {
         uni.hideLoading()
         uni.showToast({ title: err?.errMsg || err?.message || '删除失败', icon: 'none' })
+      }
+    }
+  })
+}
+
+/**
+ * 截止报名 / 重新开放报名
+ * NOTE: status 切换逻辑：pending → closed（截止），closed → pending（重新开放）
+ */
+async function handleCloseRegistration(activity: Activity) {
+  if (!activity._id) return
+  const isClosed = (activity as any).status === 'closed'
+  const nextStatus = isClosed ? 'pending' : 'closed'
+  const actionText = isClosed ? '重新报名' : '截止报名'
+  const confirmContent = isClosed
+    ? `重新开放报名后，其他人可继续报名「${activity.title}」。`
+    : `截止报名后，其他人将无法继续报名「${activity.title}」。`
+
+  // NOTE: 微信 showModal confirmText 最多 4 个字符；'重新开放报名' 6字超限会导致 Modal 静默失败
+  const confirmBtnText = isClosed ? '重新报名' : '截止报名'
+  uni.showModal({
+    title: `确认${actionText}`,
+    content: confirmContent,
+    confirmText: confirmBtnText,
+    success: async (res) => {
+      if (!res.confirm) return
+      uni.showLoading({ title: '操作中...' })
+      try {
+        console.log(`[handleCloseRegistration] 开始：${actionText}，activityId=${activity._id}，nextStatus=${nextStatus}`)
+        const result = await setActivityStatus(activity._id!, nextStatus)
+        console.log('[handleCloseRegistration] 云函数返回:', JSON.stringify(result))
+        uni.hideLoading()
+        if (result?.success === false) {
+          uni.showToast({ title: result.message || '操作失败', icon: 'none', duration: 2000 })
+          return
+        }
+        uni.showToast({ title: isClosed ? '已重新报名' : '已截止报名', icon: 'success', duration: 2000 })
+        uni.$emit('activity-updated', { activityId: activity._id })
+        await loadList()
+      } catch (err: any) {
+        uni.hideLoading()
+        console.error('[handleCloseRegistration] 异常:', err)
+        const msg = err?.errMsg || err?.message || '操作失败，请重试'
+        uni.showToast({ title: msg, icon: 'none', duration: 2500 })
       }
     }
   })
