@@ -222,7 +222,7 @@ exports.main = async (event, context) => {
             thing2: { value: (activity.title || '').slice(0, 20) },
             date4: { value: actDateTimeStr },
             thing5: { value: venueStr },
-            phrase8: { value: '有新报名' },
+            phrase8: { value: '报名成功' },
             thing23: { value: joinerName }
           }
         }
