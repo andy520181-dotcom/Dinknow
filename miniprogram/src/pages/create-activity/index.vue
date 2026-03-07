@@ -187,7 +187,6 @@
 
           <!-- 空态 -->
           <view v-else-if="templateActivities.length === 0" class="template-empty">
-            <text class="template-empty__icon">📋</text>
             <text class="template-empty__text">暂无历史活动</text>
             <text class="template-empty__sub">发布第一个活动后，可在此快速复用</text>
           </view>
