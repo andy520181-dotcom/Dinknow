@@ -715,6 +715,17 @@ async function handleJoin(activity: Activity) {
     }, 500)
     return
   }
+  // NOTE: 报名前科请订阅消息权限，用户同意后才能收到报名确认和活动变更通知
+  // 可直接点拒绝，不影响报名流程
+  await new Promise<void>(resolve => {
+    uni.requestSubscribeMessage({
+      tmplIds: [
+        '53-eN2jMxIxsMvxl7FOspewFtigQ6MKb0tedLxY6g18', // 报名成功通知
+        'b8AL_GV0DSTErOB8Nf9gEIkToN74gNAo_TYH56y9pEE', // 报名截止通知
+      ],
+      complete: () => resolve()
+    })
+  })
   try {
     const result = await joinActivity(activity._id)
     if (result?.success === false) {

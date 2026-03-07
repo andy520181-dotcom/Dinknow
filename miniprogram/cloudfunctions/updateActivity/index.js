@@ -2,6 +2,10 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
+// NOTE: 订阅消息模板 ID
+const TMPL_CLOSE_REG = 'b8AL_GV0DSTErOB8Nf9gEIkToN74gNAo_TYH56y9pEE' // 报名截止通知
+const TMPL_CANCEL_ACT = 'aiot1Xyg2C0SOU8vDww1hCop-VGNgHgHM5WP1yR5D30'  // 活动取消通知
+
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
   const openid = wxContext.OPENID
@@ -66,11 +70,13 @@ exports.main = async (event, context) => {
     if (contactType != null) updateData.contactType = contactType
     if (images != null) updateData.images = Array.isArray(images) && images.length > 0 ? images : undefined
     // NOTE: status 仅允许合法值，防止客户端传入非法状态
+    let newStatus = null
     if (event.status != null) {
       const validStatuses = ['pending', 'closed', 'cancelled']
       if (validStatuses.includes(event.status)) {
         updateData.status = event.status
         updateData.statusChangedAt = Date.now()
+        newStatus = event.status
       }
     }
 
@@ -107,9 +113,43 @@ exports.main = async (event, context) => {
     // 更新活动
     await db.collection('activities').doc(activityId).update({ data: updateData })
 
+    // NOTE: 状态变更为「截止报名」或「取消」时，批量推送订阅消息给所有已报名参与者
+    if (newStatus === 'closed' || newStatus === 'cancelled') {
+      const templateId = newStatus === 'cancelled' ? TMPL_CANCEL_ACT : TMPL_CLOSE_REG
+      const actTitle = (updateData.title || activity.title || '').slice(0, 20)
+      const actTime = [activity.startDate, activity.startTime].filter(Boolean).join(' ').slice(0, 20)
+      const actVenue = (activity.venueName || activity.address || '—').slice(0, 20)
+      const remark = newStatus === 'cancelled' ? '活动已取消，期待下次相聚' : '报名通道已关闭，感谢参与'
+
+      // 查询所有已报名者
+      db.collection('registrations').where({ activityId, status: 'joined' }).get()
+        .then(regRes => {
+          const participants = (regRes.data || []).filter(r => r.userId !== openid)
+          const sends = participants.map(r =>
+            cloud.callFunction({
+              name: 'sendSubscribeMsg',
+              data: {
+                touser: r.userId,
+                templateId,
+                page: `pages/index/index`,
+                data: {
+                  thing1: { value: actTitle },
+                  time2: { value: actTime },
+                  thing3: { value: actVenue },
+                  thing4: { value: remark }
+                }
+              }
+            }).catch(e => console.error('[updateActivity] 推送失败:', r.userId, e))
+          )
+          return Promise.all(sends)
+        })
+        .catch(e => console.error('[updateActivity] 查询报名者失败:', e))
+    }
+
     return { success: true, message: '更新成功' }
   } catch (e) {
     console.error('updateActivity', e)
     return { success: false, message: '更新失败' }
   }
 }
+

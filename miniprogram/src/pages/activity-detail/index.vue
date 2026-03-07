@@ -968,6 +968,18 @@ async function handleJoin() {
   joining.value = true
 
   try {
+  // NOTE: 报名前申请订阅消息权限（一次性授权），用户同意才能收到报名确认和活动变更通知
+  await new Promise<void>(resolve => {
+    uni.requestSubscribeMessage({
+      tmplIds: [
+        '53-eN2jMxIxsMvxl7FOspewFtigQ6MKb0tedLxY6g18', // 报名成功通知
+        'b8AL_GV0DSTErOB8Nf9gEIkToN74gNAo_TYH56y9pEE', // 报名截止通知
+        'aiot1Xyg2C0SOU8vDww1hCop-VGNgHgHM5WP1yR5D30', // 活动取消通知
+      ],
+      complete: () => resolve()
+    })
+  })
+
     const result = await joinActivity(activityId.value)
     if (result?.success === false) {
       uni.showToast({ title: result.message || '报名失败', icon: 'none' })

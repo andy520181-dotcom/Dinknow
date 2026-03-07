@@ -181,6 +181,41 @@ exports.main = async (event, context) => {
         joinedAt: Date.now()
       }
     })
+
+    // 10. 订阅消息推送（异步，失败不影响报名结果）
+    // NOTE: 模板字段 key 需与微信公众平台「详情」中的字段名严格对应
+    const TMPL_JOIN_CONFIRM = '53-eN2jMxIxsMvxl7FOspewFtigQ6MKb0tedLxY6g18' // 报名成功通知 → 报名者
+    const TMPL_NEW_REGISTRANT = 'Xj24M5_YdfmnpSpwNGI69w__rcm63e8EBE5fgLYWY2k' // 取消报名通知模板暂借用，待确认
+
+    // 格式化活动时间
+    const activityTimeStr = [activity.startDate, activity.startTime, activity.endTime ? `- ${activity.endTime}` : ''].filter(Boolean).join(' ')
+    const venueStr = activity.venueName || activity.address || '—'
+
+    const sendMsg = (touser, templateId, data, page) =>
+      cloud.callFunction({
+        name: 'sendSubscribeMsg',
+        data: { touser, templateId, page, data }
+      }).catch(e => console.error('[joinActivity] 推送失败:', e))
+
+    // 向报名者推送「报名成功」确认
+    sendMsg(openid, TMPL_JOIN_CONFIRM, {
+      thing1: { value: (activity.title || '').slice(0, 20) },
+      time2: { value: activityTimeStr.slice(0, 20) },
+      thing3: { value: venueStr.slice(0, 20) },
+      thing4: { value: '报名成功，期待与您相聚！' }
+    }, `pages/activity-detail/index?id=${activityId}`)
+
+    // 向发起人推送「有人报名」通知
+    if (hostId && hostId !== openid) {
+      const joinerName = (currentUser.nickName || currentUser.nickname || '匹克球友').slice(0, 20)
+      sendMsg(hostId, TMPL_NEW_REGISTRANT, {
+        thing1: { value: (activity.title || '').slice(0, 20) },
+        time2: { value: activityTimeStr.slice(0, 20) },
+        thing3: { value: joinerName },
+        thing4: { value: '点击查看报名详情' }
+      }, `pages/activity-detail/index?id=${activityId}`)
+    }
+
     return { success: true }
   } catch (e) {
     console.error('joinActivity', e)

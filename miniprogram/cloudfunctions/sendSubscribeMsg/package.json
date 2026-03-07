@@ -1,0 +1,9 @@
+{
+    "name": "sendSubscribeMsg",
+    "version": "1.0.0",
+    "description": "统一订阅消息发送云函数",
+    "main": "index.js",
+    "dependencies": {
+        "wx-server-sdk": "~2.6.3"
+    }
+}
