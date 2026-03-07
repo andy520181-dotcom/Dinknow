@@ -49,7 +49,11 @@ exports.main = async (event, context) => {
         cancellerName = userRes.data?.[0]?.nickName || userRes.data?.[0]?.nickname || '匹克球友'
       } catch (_) { }
 
-      const activityTimeStr = [activity.startDate, activity.startTime].filter(Boolean).join(' ')
+      const activityTimeStr = [activity.startDate, activity.startTime].filter(Boolean).join(' ').slice(0, 20)
+
+      // 格式化当前取消时间
+      const now = new Date()
+      const cancelTimeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
       await cloud.callFunction({
         name: 'sendSubscribeMsg',
@@ -58,10 +62,11 @@ exports.main = async (event, context) => {
           templateId: TMPL_CANCEL_NOTIFY,
           page: `pages/activity-detail/index?id=${activityId}`,
           data: {
+            // NOTE: 字段映射：thing1=活动名称, time2=活动时间, name3=取消人, time7=取消时间
             thing1: { value: (activity.title || '').slice(0, 20) },
-            time2: { value: activityTimeStr.slice(0, 20) },
-            thing3: { value: cancellerName.slice(0, 20) },
-            thing4: { value: '点击查看最新报名情况' }
+            time2: { value: activityTimeStr },
+            name3: { value: cancellerName.slice(0, 10) },
+            time7: { value: cancelTimeStr }
           }
         }
       })

@@ -183,38 +183,31 @@ exports.main = async (event, context) => {
     })
 
     // 10. 订阅消息推送（异步，失败不影响报名结果）
-    // NOTE: 模板字段 key 需与微信公众平台「详情」中的字段名严格对应
-    const TMPL_JOIN_CONFIRM = '53-eN2jMxIxsMvxl7FOspewFtigQ6MKb0tedLxY6g18' // 报名成功通知 → 报名者
-    const TMPL_NEW_REGISTRANT = 'Xj24M5_YdfmnpSpwNGI69w__rcm63e8EBE5fgLYWY2k' // 取消报名通知模板暂借用，待确认
+    // NOTE: 字段 key 严格按照微信公众平台模板详情页中的字段名
+    const TMPL_JOIN_CONFIRM = '53-eN2jMxIxsMvxl7FOspewFtigQ6MKb0tedLxY6g18' // 报名成功通知
 
-    // 格式化活动时间
-    const activityTimeStr = [activity.startDate, activity.startTime, activity.endTime ? `- ${activity.endTime}` : ''].filter(Boolean).join(' ')
-    const venueStr = activity.venueName || activity.address || '—'
-
-    const sendMsg = (touser, templateId, data, page) =>
-      cloud.callFunction({
-        name: 'sendSubscribeMsg',
-        data: { touser, templateId, page, data }
-      }).catch(e => console.error('[joinActivity] 推送失败:', e))
+    // 格式化活动时间（date4 字段为日期时间类型）
+    const actDateTimeStr = [activity.startDate, activity.startTime].filter(Boolean).join(' ').slice(0, 20)
+    const venueStr = (activity.venueName || activity.address || '—').slice(0, 20)
+    const joinerName = (currentUser.nickName || currentUser.nickname || '匹克球友').slice(0, 20)
 
     // 向报名者推送「报名成功」确认
-    sendMsg(openid, TMPL_JOIN_CONFIRM, {
-      thing1: { value: (activity.title || '').slice(0, 20) },
-      time2: { value: activityTimeStr.slice(0, 20) },
-      thing3: { value: venueStr.slice(0, 20) },
-      thing4: { value: '报名成功，期待与您相聚！' }
-    }, `pages/activity-detail/index?id=${activityId}`)
-
-    // 向发起人推送「有人报名」通知
-    if (hostId && hostId !== openid) {
-      const joinerName = (currentUser.nickName || currentUser.nickname || '匹克球友').slice(0, 20)
-      sendMsg(hostId, TMPL_NEW_REGISTRANT, {
-        thing1: { value: (activity.title || '').slice(0, 20) },
-        time2: { value: activityTimeStr.slice(0, 20) },
-        thing3: { value: joinerName },
-        thing4: { value: '点击查看报名详情' }
-      }, `pages/activity-detail/index?id=${activityId}`)
-    }
+    // 字段映射：thing2=活动名称, date4=活动时间, thing5=地址, phrase8=报名状态, thing23=报名人
+    cloud.callFunction({
+      name: 'sendSubscribeMsg',
+      data: {
+        touser: openid,
+        templateId: TMPL_JOIN_CONFIRM,
+        page: `pages/activity-detail/index?id=${activityId}`,
+        data: {
+          thing2: { value: (activity.title || '').slice(0, 20) },
+          date4: { value: actDateTimeStr },
+          thing5: { value: venueStr },
+          phrase8: { value: '报名成功' },
+          thing23: { value: joinerName }
+        }
+      }
+    }).catch(e => console.error('[joinActivity] 推送报名成功通知失败:', e))
 
     return { success: true }
   } catch (e) {

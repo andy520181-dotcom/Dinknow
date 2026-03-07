@@ -115,32 +115,60 @@ exports.main = async (event, context) => {
 
     // NOTE: 状态变更为「截止报名」或「取消」时，批量推送订阅消息给所有已报名参与者
     if (newStatus === 'closed' || newStatus === 'cancelled') {
-      const templateId = newStatus === 'cancelled' ? TMPL_CANCEL_ACT : TMPL_CLOSE_REG
       const actTitle = (updateData.title || activity.title || '').slice(0, 20)
-      const actTime = [activity.startDate, activity.startTime].filter(Boolean).join(' ').slice(0, 20)
+      const actDateStr = (activity.startDate || '').slice(0, 20)
+      const actTimeStr = [activity.startDate, activity.startTime].filter(Boolean).join(' ').slice(0, 20)
       const actVenue = (activity.venueName || activity.address || '—').slice(0, 20)
-      const remark = newStatus === 'cancelled' ? '活动已取消，期待下次相聚' : '报名通道已关闭，感谢参与'
+
+      // 格式化当前截止时间
+      const now = new Date()
+      const nowTimeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
       // 查询所有已报名者
       db.collection('registrations').where({ activityId, status: 'joined' }).get()
-        .then(regRes => {
+        .then(async regRes => {
           const participants = (regRes.data || []).filter(r => r.userId !== openid)
-          const sends = participants.map(r =>
-            cloud.callFunction({
+
+          // 活动取消时需要发起人昵称（name4 字段）
+          let hostName = '发起人'
+          if (newStatus === 'cancelled') {
+            try {
+              const hostRes = await db.collection('users').where({ openid }).get()
+              hostName = (hostRes.data?.[0]?.nickName || hostRes.data?.[0]?.nickname || '发起人').slice(0, 10)
+            } catch (_) { }
+          }
+
+          const sends = participants.map(r => {
+            // NOTE: 两个模板字段不同，分别构造
+            const msgData = newStatus === 'cancelled'
+              ? {
+                // 活动取消通知：thing1=活动名称, date2=活动时间, thing3=活动地点, name4=取消人, thing11=温馨提示
+                thing1: { value: actTitle },
+                date2: { value: actDateStr },
+                thing3: { value: actVenue },
+                name4: { value: hostName },
+                thing11: { value: '活动已取消，期待下次见' }
+              }
+              : {
+                // 报名截止通知：thing1=报名标题, time2=活动时间, thing3=活动地址, thing5=报名状态, time8=截止时间
+                thing1: { value: actTitle },
+                time2: { value: actTimeStr },
+                thing3: { value: actVenue },
+                thing5: { value: '报名通道已关闭' },
+                time8: { value: nowTimeStr }
+              }
+
+            return cloud.callFunction({
               name: 'sendSubscribeMsg',
               data: {
                 touser: r.userId,
-                templateId,
+                templateId: newStatus === 'cancelled' ? TMPL_CANCEL_ACT : TMPL_CLOSE_REG,
                 page: `pages/index/index`,
-                data: {
-                  thing1: { value: actTitle },
-                  time2: { value: actTime },
-                  thing3: { value: actVenue },
-                  thing4: { value: remark }
-                }
+                data: msgData
               }
             }).catch(e => console.error('[updateActivity] 推送失败:', r.userId, e))
-          )
+          })
+
           return Promise.all(sends)
         })
         .catch(e => console.error('[updateActivity] 查询报名者失败:', e))
