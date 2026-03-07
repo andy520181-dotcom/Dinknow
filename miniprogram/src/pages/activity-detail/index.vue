@@ -167,6 +167,8 @@
           <text v-else-if="isFull">报名已满</text>
           <text v-else>立即报名</text>
         </button>
+        <!-- NOTE: 提示用户为何会弹出订阅消息授权弹窗 -->
+        <text v-if="!isFull" class="subscribe-hint">📢 授权后可接收报名确认和活动变更通知</text>
       </view>
 
     </view>
@@ -1738,6 +1740,16 @@ onShareTimeline(() => {
   font-size: 12px;
   color: $ios-blue;
   font-weight: $ios-font-weight-medium;
+}
+
+// NOTE: 订阅消息授权小字提示，把弹窗原因告知用户
+.subscribe-hint {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: $ios-text-tertiary;
+  margin-top: 8px;
+  line-height: 1.4;
 }
 
 </style>

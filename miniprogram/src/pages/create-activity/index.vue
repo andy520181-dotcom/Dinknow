@@ -161,6 +161,8 @@
         >
           {{ submitting ? (editingActivityId ? '保存中...' : '发布中...') : (editingActivityId ? '保存修改' : '立即发布') }}
         </view>
+        <!-- NOTE: 提示发起人为何会弹出订阅消息授权弹窗 -->
+        <text v-if="!editingActivityId" class="subscribe-hint">📢 授权后可在有人报名或退出时收到通知</text>
       </view>
     </scroll-view>
 
@@ -1756,6 +1758,16 @@ onShow(() => {
 // NOTE: 用 class 控制禁用外观，绕开微信 button 内置 disabled 浅灰样式
 .primary-btn--disabled {
   background: #8e8e93;
+}
+
+// NOTE: 订阅消息授权小字提示，让用户提前了解弹窗用意
+.subscribe-hint {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: $ios-text-tertiary;
+  margin-top: 8px;
+  line-height: 1.4;
 }
 // NOTE: 免责声明勾选行已移入 scroll-view 内容区底部，融入表单流；
 // 去掉独立背景，使用与表单一致的左右边距
