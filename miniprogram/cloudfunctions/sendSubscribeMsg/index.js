@@ -26,7 +26,7 @@ exports.main = async (event) => {
             page: page || 'pages/index/index',
             data,
             // NOTE: miniprogramState 不传时默认 formal（正式版），开发阶段可改为 developer
-            // miniprogramState: 'developer',
+            miniprogramState: 'developer',
         })
         console.log('[sendSubscribeMsg] 发送成功:', touser, templateId, result)
         return { success: true }

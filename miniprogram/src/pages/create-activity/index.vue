@@ -888,6 +888,17 @@ async function handleSubmit() {
     images: uploadedImages.length > 0 ? uploadedImages : undefined
   }
 
+  // NOTE: 发布活动时申请「报名成功通知」订阅权限，以便后续有人报名时能收到通知
+  // 仅新建时申请，编辑时发起人已订阅过
+  if (!editingActivityId.value) {
+    await new Promise<void>(resolve => {
+      uni.requestSubscribeMessage({
+        tmplIds: ['53-eN2jMxIxsMvxl7FOspewFtigQ6MKb0tedLxY6g18'], // 报名成功通知
+        complete: () => resolve()
+      })
+    })
+  }
+
   submitting.value = true
   try {
     if (editingActivityId.value) {

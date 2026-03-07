@@ -207,7 +207,27 @@ exports.main = async (event, context) => {
           thing23: { value: joinerName }
         }
       }
-    }).catch(e => console.error('[joinActivity] 推送报名成功通知失败:', e))
+    }).catch(e => console.error('[joinActivity] 推送报名者通知失败:', e))
+
+    // NOTE: 同时向发起人推送「有人报名」通知
+    // 发起人在发布活动时已通过 requestSubscribeMessage 订阅了同一模板
+    if (hostId && hostId !== openid) {
+      cloud.callFunction({
+        name: 'sendSubscribeMsg',
+        data: {
+          touser: hostId,
+          templateId: TMPL_JOIN_CONFIRM,
+          page: `pages/activity-detail/index?id=${activityId}`,
+          data: {
+            thing2: { value: (activity.title || '').slice(0, 20) },
+            date4: { value: actDateTimeStr },
+            thing5: { value: venueStr },
+            phrase8: { value: '有新报名' },
+            thing23: { value: joinerName }
+          }
+        }
+      }).catch(e => console.error('[joinActivity] 推送发起人通知失败:', e))
+    }
 
     return { success: true }
   } catch (e) {
